@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check auth
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper to check for admin role (if stored in custom claims or user doc)
+    // For simplicity in this demo, we check if user doc has role 'admin'
+    function isAdmin() {
+       return isAuthenticated() && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Users: Users can read their own profile. Admins can read/write all.
+    match /users/{userId} {
+      allow read, update: if request.auth.uid == userId;
+      allow create: if isAuthenticated(); // Allow internal creation
+    }
+
+    // Pre-Sales: Employees can read/write
+    match /pre_sales_queries/{queryId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Products: Employees can read/write (warranty updates etc)
+    match /products/{productId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Service Tickets: Employees can read/write
+    match /service_tickets/{ticketId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Spare Parts: Employees can read, Admins can write stock
+    match /spare_parts/{partId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // Audit Logs: System writes only (enforced via app logic, but here assume authenticated write)
+    match /reminder_logs/{logId} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}
