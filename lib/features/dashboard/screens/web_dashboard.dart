@@ -5,7 +5,7 @@ import '../../auth/screens/admin_user_management_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../service_desk/screens/spare_parts_screen.dart';
-import '../screens/reminder_list_screen.dart';
+// import '../screens/reminder_list_screen.dart';
 import '../../pre_sales/screens/pre_sales_list_screen.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/analytics_card.dart';
@@ -134,7 +134,9 @@ class WebDashboard extends StatelessWidget {
                       value: data['sla_today'].toString(),
                       icon: Icons.timer,
                       color: Colors.redAccent,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReminderListScreen())),
+                      onTap: () {
+                        // Navigator.push(context, MaterialPageRoute(builder: (_) => const ReminderListScreen()));
+                      },
                     ),
                     AnalyticsCard(
                       title: 'Pending Approvals',
@@ -169,6 +171,19 @@ class WebDashboard extends StatelessWidget {
                       icon: Icons.warning,
                       color: Colors.red,
                     ),
+                    AnalyticsCard(
+                      title: 'Total Products Sold',
+                      value: data['total_products'].toString(),
+                      icon: Icons.shopping_bag,
+                      color: Colors.teal,
+                      onTap: () => onNavTap(2),
+                    ),
+                    AnalyticsCard(
+                      title: 'Warranty Claim Rate',
+                      value: '${data['warranty_claim_percent']}%',
+                      icon: Icons.percent,
+                      color: Colors.orangeAccent,
+                    ),
                   ],
                 );
               },
@@ -179,71 +194,78 @@ class WebDashboard extends StatelessWidget {
     );
   }
   Future<Map<String, int>> _fetchDashboardStats() async {
-    final firestore = FirebaseFirestore.instance;
-    // Note: In a real large-scale app, we would use aggregation queries or counter shards.
-    // For this size, getting query snapshots is acceptable.
-    
-    // 1. Total Enquiries
-    final totalSnap = await firestore.collection(FirestoreCollections.preSalesQueries).count().get();
-    
-    // 2. Proposals Sent
-    final sentSnap = await firestore.collection(FirestoreCollections.preSalesQueries)
-        .where('proposalStatus', isEqualTo: 'proposal_sent').count().get();
+    try {
+      final firestore = FirebaseFirestore.instance;
 
-    // 3. Pending Internal Approvals
-    final approvalSnap = await firestore.collection(FirestoreCollections.preSalesQueries)
-        .where('approvalStatus', isEqualTo: 'pending').count().get();
+      // 1. Pre-Sales Stats
+      final queriesSnap = await firestore.collection(FirestoreCollections.preSalesQueries).get();
+      final queries = queriesSnap.docs;
+      final total = queries.length;
+      final sent = queries.where((d) => d['proposalStatus'] == 'proposal_sent').length;
+      final approvals = queries.where((d) => d['approvalStatus'] == 'pending').length;
+      // Simple date check for SLA
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final slaToday = queries.where((d) {
+         final received = (d['queryReceivedDate'] as Timestamp?)?.toDate(); 
+         final days = d['replyCommitmentDays'] as int? ?? 2;
+         if (received == null) return false;
+         final due = received.add(Duration(days: days));
+         
+         return due.year == now.year && due.month == now.month && due.day == now.day;
+      }).length;
 
-    // 4. SLA Due Today
-    final todayStart = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-    final reminderSnap = await firestore.collection(FirestoreCollections.reminderLogs)
-        .where('reminderDate', isGreaterThanOrEqualTo: Timestamp.fromDate(todayStart))
-        .where('reminderType', isEqualTo: 'Pre-Sales Reply Deadline Today')
-        .count().get();
 
-    // 5. Active Warranties (Client-side filter for now, ideally backend count)
-    // Querying all products is heavy, but for < 1000 items it's okay.
-    // Better: maintain a counter in a 'stats' document.
-    final pSnap = await firestore.collection(FirestoreCollections.products).get();
-    int activeWarranty = 0;
-    int expiredWarranty = 0;
-    final now = DateTime.now();
-    for(var doc in pSnap.docs) {
-       final end = (doc['warrantyEndDate'] as Timestamp).toDate();
-       if (end.isAfter(now)) {
-         activeWarranty++;
-       } else {
-         expiredWarranty++;
-       }
-    }
+      // 2. Product Warranty Stats
+      final productsSnap = await firestore.collection(FirestoreCollections.products).get();
+      final products = productsSnap.docs;
+      final totalProducts = products.length;
+      final activeWarranty = products.where((d) {
+         final status = d.data().containsKey('warrantyStatus') ? d['warrantyStatus'] : 'Unknown';
+         return status == 'Active'; 
+      }).length;
+      final expiredWarranty = totalProducts - activeWarranty;
 
-    // 6. Open Tickets & SLA Breaches
-    final openTicketsSnap = await firestore.collection(FirestoreCollections.serviceTickets)
-       .where('status', whereIn: ['open', 'in_progress']).get();
-    
-    int openTicketsCount = openTicketsSnap.docs.length;
-    int slaBreaches = 0;
-
-    for (var doc in openTicketsSnap.docs) {
-      final data = doc.data();
-      final receivedDate = (data['issueReceivedDate'] as Timestamp).toDate();
-      final slaDays = data['serviceSLAReplyDays'] as int? ?? 2; // Default 2 days
+      // 3. Service Ticket Stats
+      final ticketsSnap = await firestore.collection(FirestoreCollections.serviceTickets).get();
+      final tickets = ticketsSnap.docs;
+      final openTickets = tickets.where((d) => (d['status'] ?? '') == 'Open').length;
+      final slaBreaches = tickets.where((d) {
+         // robust check
+         if (!d.data().containsKey('slaDueDate')) return false;
+         final due = (d['slaDueDate'] as Timestamp?)?.toDate();
+         final status = d['status'] ?? '';
+         if (due == null || status == 'Closed') return false;
+         return due.isBefore(now);
+      }).length;
       
-      final deadline = receivedDate.add(Duration(days: slaDays));
-      if (DateTime.now().isAfter(deadline)) {
-        slaBreaches++;
+      // 4. Claim Rate
+      // Calculate based on products with history entries containing 'warranty_claim'
+      // For now, simpler metric: (Total Tickets / Total Products) * 100 if > 0
+      int claimPercent = 0;
+      if (totalProducts > 0) {
+        claimPercent = ((tickets.length / totalProducts) * 100).round();
       }
-    }
 
-    return {
-      'total': totalSnap.count ?? 0,
-      'sent': sentSnap.count ?? 0,
-      'approvals': approvalSnap.count ?? 0,
-      'sla_today': reminderSnap.count ?? 0,
-      'active_warranty': activeWarranty,
-      'expired_warranty': expiredWarranty,
-      'open_tickets': openTicketsCount,
-      'sla_breaches': slaBreaches,
-    };
+      return {
+        'total': total,
+        'sent': sent,
+        'approvals': approvals,
+        'sla_today': slaToday,
+        'active_warranty': activeWarranty,
+        'expired_warranty': expiredWarranty,
+        'open_tickets': openTickets,
+        'sla_breaches': slaBreaches,
+        'total_products': totalProducts,
+        'warranty_claim_percent': claimPercent,
+      };
+    } catch (e) {
+      debugPrint('Dashboard Error: $e');
+      return {
+        'total': 0, 'sent': 0, 'approvals': 0, 'sla_today': 0,
+        'active_warranty': 0, 'expired_warranty': 0, 'open_tickets': 0,
+        'sla_breaches': 0, 'total_products': 0, 'warranty_claim_percent': 0
+      };
+    }
   }
 }

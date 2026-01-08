@@ -4,6 +4,7 @@ import 'product_detail_screen.dart';
 import '../../../data/models/product_model.dart';
 // import '../../../core/utils/logic_engines.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'add_edit_product_screen.dart';
 
 class ProductListScreen extends StatelessWidget {
   const ProductListScreen({super.key});
@@ -13,7 +14,7 @@ class ProductListScreen extends StatelessWidget {
      return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // Add Product
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEditProductScreen()));
         },
         label: const Text("Register Product"),
         icon: const Icon(Icons.add),

@@ -97,6 +97,25 @@ class _PreSalesDetailScreenState extends State<PreSalesDetailScreen> {
      _refresh();
   }
 
+  void _setReminder() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _query.followUpScheduledDate ?? DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+
+    if (date != null && mounted) {
+      await FirebaseFirestore.instance.collection(FirestoreCollections.preSalesQueries).doc(_query.id).update({
+        'followUpScheduledDate': Timestamp.fromDate(date),
+        'followUpReminderTomorrow': false, // Reset flag so reminder works again
+        'latestUpdateOn': FieldValue.serverTimestamp(),
+      });
+      _refresh();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reminder Set!')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -124,6 +143,7 @@ class _PreSalesDetailScreenState extends State<PreSalesDetailScreen> {
                 _buildStatusCard(),
                 const SizedBox(height: 24),
                 _buildInfoSection('Contact Info', [
+                  'Company: ${_query.company ?? '-'}',
                   'Phone: ${_query.phoneNumber}',
                   'Email: ${_query.email}',
                   'Location: ${_query.location['city']}, ${_query.location['state']}',
@@ -242,6 +262,14 @@ class _PreSalesDetailScreenState extends State<PreSalesDetailScreen> {
                   Expanded(child: ElevatedButton(onPressed: _approveProposal, child: const Text('Approve Internally')))
                 else if (_query.proposalStatus != 'proposal_sent')
                   Expanded(child: ElevatedButton(onPressed: _sendProposal, child: const Text('Mark Proposal Sent'))),
+                
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _setReminder, 
+                    child: Text(_query.followUpScheduledDate == null ? 'Set Admin Reminder' : 'Update Reminder')
+                  )
+                ),
               ],
             )
           ],

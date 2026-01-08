@@ -22,6 +22,9 @@ class _PreSalesFormScreenState extends State<PreSalesFormScreen> {
   late TextEditingController _productCtrl;
   late TextEditingController _sourceCtrl;
   late TextEditingController _slaCtrl;
+  late TextEditingController _companyCtrl;
+  late TextEditingController _cityCtrl;
+  late TextEditingController _stateCtrl;
   final Uuid _uuid = const Uuid();
 
   @override
@@ -33,6 +36,12 @@ class _PreSalesFormScreenState extends State<PreSalesFormScreen> {
     _productCtrl = TextEditingController(text: widget.query?.productQueryDescription ?? '');
     _sourceCtrl = TextEditingController(text: widget.query?.querySource ?? 'Manual');
     _slaCtrl = TextEditingController(text: (widget.query?.replyCommitmentDays ?? 2).toString());
+    
+    _companyCtrl = TextEditingController(text: widget.query?.company ?? '');
+    // Handle location map safely
+    final loc = widget.query?.location ?? {};
+    _cityCtrl = TextEditingController(text: loc['city'] ?? '');
+    _stateCtrl = TextEditingController(text: loc['state'] ?? '');
   }
 
   void _save() async {
@@ -45,13 +54,17 @@ class _PreSalesFormScreenState extends State<PreSalesFormScreen> {
       customerName: _customerNameCtrl.text,
       phoneNumber: _phoneCtrl.text,
       email: _emailCtrl.text,
+      company: _companyCtrl.text.isNotEmpty ? _companyCtrl.text : null,
+      location: {
+        'city': _cityCtrl.text,
+        'state': _stateCtrl.text,
+      },
       productQueryDescription: _productCtrl.text,
       queryReceivedDate: widget.query?.queryReceivedDate ?? DateTime.now(),
       replyCommitmentDays: int.tryParse(_slaCtrl.text) ?? 2,
       latestUpdateOn: DateTime.now(),
       latestUpdatedBy: 'Employee (Manual Entry)',
       notesThread: widget.query?.notesThread ?? [],
-      // Keep other fields as default/existing
     );
 
     try {
@@ -79,6 +92,29 @@ class _PreSalesFormScreenState extends State<PreSalesFormScreen> {
                 controller: _customerNameCtrl,
                 decoration: const InputDecoration(labelText: 'Customer Name'),
                 validator: (v) => v!.isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: 16),
+               TextFormField(
+                controller: _companyCtrl,
+                decoration: const InputDecoration(labelText: 'Company Name (Optional)'),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                   Expanded(
+                    child: TextFormField(
+                      controller: _cityCtrl,
+                      decoration: const InputDecoration(labelText: 'City'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _stateCtrl,
+                      decoration: const InputDecoration(labelText: 'State'),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               Row(

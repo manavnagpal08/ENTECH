@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+// Updated for V3
 
 class Note {
   final String text;
@@ -26,7 +27,7 @@ class PreSalesQuery {
   final String customerName;
   final String phoneNumber;
   final String email;
-  final String? companyName;
+  final String? company;
   final Map<String, dynamic> location;
   final String productQueryDescription;
   final DateTime queryReceivedDate;
@@ -51,7 +52,7 @@ class PreSalesQuery {
     required this.customerName,
     required this.phoneNumber,
     required this.email,
-    this.companyName,
+    this.company,
     this.location = const {},
     required this.productQueryDescription,
     required this.queryReceivedDate,
@@ -80,7 +81,7 @@ class PreSalesQuery {
       'customerName': customerName,
       'phoneNumber': phoneNumber,
       'email': email,
-      'companyName': companyName,
+      'company': company,
       'location': location,
       'productQueryDescription': productQueryDescription,
       'queryReceivedDate': Timestamp.fromDate(queryReceivedDate),
@@ -109,7 +110,7 @@ class PreSalesQuery {
       customerName: data['customerName'] ?? '',
       phoneNumber: data['phoneNumber'] ?? '',
       email: data['email'] ?? '',
-      companyName: data['companyName'],
+      company: data['company'],
       location: data['location'] ?? {},
       productQueryDescription: data['productQueryDescription'] ?? '',
       queryReceivedDate: (data['queryReceivedDate'] as Timestamp).toDate(),

@@ -4,6 +4,7 @@ import '../../../data/models/service_ticket_model.dart';
 import 'package:intl/intl.dart';
 import 'service_ticket_detail_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'service_ticket_form.dart';
 
 class ServiceTicketListScreen extends StatefulWidget {
   const ServiceTicketListScreen({super.key});
@@ -45,7 +46,7 @@ class _ServiceTicketListScreenState extends State<ServiceTicketListScreen> with 
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // Navigator.push(context, MaterialPageRoute(builder: (_) => ServiceTicketForm()));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const ServiceTicketForm()));
         },
         label: const Text("New Ticket"),
         icon: const Icon(Icons.add_task),
