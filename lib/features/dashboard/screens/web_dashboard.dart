@@ -150,13 +150,14 @@ class WebDashboard extends StatelessWidget {
                       value: data['active_warranty'].toString(),
                       icon: Icons.verified,
                       color: Colors.green,
-                      // onTap: () => onNavTap(2), // Products
+                      onTap: () => onNavTap(2), // Products
                     ),
                     AnalyticsCard(
                       title: 'Expired Warranty',
                       value: data['expired_warranty'].toString(),
                       icon: Icons.cancel,
                       color: Colors.red.shade300,
+                      onTap: () => onNavTap(2),
                     ),
                     AnalyticsCard(
                       title: 'Open Tickets',
@@ -221,8 +222,10 @@ class WebDashboard extends StatelessWidget {
       final products = productsSnap.docs;
       final totalProducts = products.length;
       final activeWarranty = products.where((d) {
-         final status = d.data().containsKey('warrantyStatus') ? d['warrantyStatus'] : 'Unknown';
-         return status == 'Active'; 
+         if (!d.data().containsKey('warrantyEndDate')) return false;
+         final end = (d['warrantyEndDate'] as Timestamp?)?.toDate();
+         if (end == null) return false;
+         return end.isAfter(DateTime.now());
       }).length;
       final expiredWarranty = totalProducts - activeWarranty;
 

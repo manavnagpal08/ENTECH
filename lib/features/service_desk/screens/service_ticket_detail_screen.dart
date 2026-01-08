@@ -122,12 +122,37 @@ class _ServiceTicketDetailScreenState extends State<ServiceTicketDetailScreen> w
   }
 
   void _generatePDF() async {
-      // Need product too
-      final pDoc = await FirebaseFirestore.instance.collection(FirestoreCollections.products).where('serialNumber', isEqualTo: _ticket.linkedSerialNumber).get();
-      if (pDoc.docs.isNotEmpty) {
-        final product = ProductModel.fromSnapshot(pDoc.docs.first);
-        await PdfService().generateServiceTicketReport(_ticket, product);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Generating PDF Report...')));
+    try {
+      ProductModel? product;
+      if (_ticket.linkedSerialNumber.isNotEmpty) {
+         final pDoc = await FirebaseFirestore.instance.collection(FirestoreCollections.products)
+             .where('serialNumber', isEqualTo: _ticket.linkedSerialNumber).get();
+         if (pDoc.docs.isNotEmpty) {
+           product = ProductModel.fromSnapshot(pDoc.docs.first);
+         }
       }
+      
+      // Fallback if product not found/linked
+      if (product == null) {
+        product = ProductModel(
+          id: 'unknown',
+          serialNumber: _ticket.linkedSerialNumber,
+          productName: 'Unknown Product',
+          modelOrVariant: '-',
+          customerName: 'Unknown Customer',
+          phoneNumber: '-',
+          email: '-',
+          purchaseDate: DateTime.now(),
+          warrantyStartDate: DateTime.now(),
+          warrantyEndDate: DateTime.now(),
+        );
+      }
+
+      await PdfService().generateServiceTicketReport(_ticket, product);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF Error: $e')));
+    }
   }
 
   @override
