@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  static const Color primary = Color(0xFF2E7D32); // Environmental Green
+  static const Color primary = Color(0xFF1976D2); // Primary Blue
   static const Color secondary = Color(0xFF1565C0); // Trustworthy Blue
   static const Color accent = Color(0xFFFF6F00); // Alert/Action Orange
   static const Color background = Color(0xFFF5F7FA);
@@ -21,7 +21,7 @@ class AppTheme {
         primary: AppColors.primary,
         secondary: AppColors.secondary,
         surface: AppColors.surface,
-        background: AppColors.background,
+        // background: AppColors.background, // Deprecated in Flutter 3.19+
         error: AppColors.error,
       ),
       scaffoldBackgroundColor: AppColors.background,
@@ -33,18 +33,17 @@ class AppTheme {
         backgroundColor: AppColors.surface,
         elevation: 0,
         centerTitle: false,
-        iconTheme: IconThemeData(color: AppColors.textPrimary),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         titleTextStyle: GoogleFonts.inter(
           color: AppColors.textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.w600,
         ),
       ),
-      cardTheme: CardTheme(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: AppColors.surface,
-      ),
+      // cardTheme: const CardTheme(
+      //   elevation: 2,
+      //   color: AppColors.surface,
+      // ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,

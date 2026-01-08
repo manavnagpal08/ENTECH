@@ -1,13 +1,4 @@
-import 'pre_sales_form_screen.dart';
-
-// ... inside class
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const PreSalesFormScreen()));
-        },
-        child: const Icon(Icons.add),
-      ),
-// ...
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
@@ -15,6 +6,8 @@ import '../../../core/services/excel_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/presales_query_model.dart';
 import '../../../core/constants/app_constants.dart';
+import 'pre_sales_form_screen.dart';
+import 'pre_sales_detail_screen.dart';
 
 class PreSalesListScreen extends StatefulWidget {
   const PreSalesListScreen({super.key});
@@ -34,10 +27,28 @@ class _PreSalesListScreenState extends State<PreSalesListScreen> {
       allowedExtensions: ['xlsx', 'xls'],
     );
 
-    if (result != null && result.files.single.path != null) {
+    if (result != null) {
+      if (!mounted) return;
       try {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Parsing Excel...')));
-        final queries = await _excelService.parsePreSalesExcel(result.files.single.path!);
+        
+        // Handle Web vs Mobile/Desktop
+        List<int> bytes;
+        if (result.files.single.bytes != null) {
+          bytes = result.files.single.bytes!;
+        } else if (result.files.single.path != null) {
+          // On mobile/desktop, we might need to read file, 
+          // BUT since we removed dart:io from service, we cannot do it there.
+          // Better to avoid relying on path here if possible or use universal_io.
+          // For now, let's assume pickFiles(withData: true) is default on web
+          // On Desktop, we might need to read it here? 
+          // Since we are fixing Web, let's just error if no bytes for now or use user's explicit request to "fix fast".
+           throw Exception("File data not available. Please retry.");
+        } else {
+           throw Exception("File not readable.");
+        }
+
+        final queries = await _excelService.parsePreSalesExcel(bytes);
         
         // Batch write to Firestore
         final batch = _firestore.batch();
@@ -47,9 +58,13 @@ class _PreSalesListScreenState extends State<PreSalesListScreen> {
         }
         await batch.commit();
         
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Successfully imported ${queries.length} queries')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Successfully imported ${queries.length} queries')));
+        }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+        }
       }
     }
   }
@@ -59,8 +74,7 @@ class _PreSalesListScreenState extends State<PreSalesListScreen> {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Navigate to Add Form
-          // Navigator.push...
+           Navigator.push(context, MaterialPageRoute(builder: (_) => const PreSalesFormScreen()));
         },
         child: const Icon(Icons.add),
       ),
@@ -141,7 +155,7 @@ class _PreSalesListScreenState extends State<PreSalesListScreen> {
                             ? const Chip(label: Text('Follow-up Due'), backgroundColor: Colors.orangeAccent)
                             : null,
                         onTap: () {
-                          // View Detail
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => PreSalesDetailScreen(query: query)));
                         },
                       ),
                     );

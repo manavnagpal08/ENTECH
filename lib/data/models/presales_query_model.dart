@@ -32,12 +32,18 @@ class PreSalesQuery {
   final DateTime queryReceivedDate;
   final DateTime? proposalSentDate;
   final DateTime? proposalAcceptedDate;
-  final String proposalStatus; // 'new', 'proposal_sent', 'accepted', 'rejected'
+  final DateTime? proposalRejectedDate;
+  final String proposalStatus;
   final int replyCommitmentDays;
-  final String approvalStatus; // 'pending', 'approved', 'rejected'
+  final String approvalStatus;
+  final DateTime? proposalApprovalDate;
+  final String? proposalApprovedBy;
+  final String? proposalApprovalNotes;
   final DateTime? followUpScheduledDate;
   final bool followUpReminderTomorrow;
   final List<Note> notesThread;
+  final DateTime? latestUpdateOn;
+  final String? latestUpdatedBy;
 
   PreSalesQuery({
     required this.id,
@@ -51,13 +57,22 @@ class PreSalesQuery {
     required this.queryReceivedDate,
     this.proposalSentDate,
     this.proposalAcceptedDate,
+    this.proposalRejectedDate,
     this.proposalStatus = 'new',
     this.replyCommitmentDays = 2,
     this.approvalStatus = 'pending',
+    this.proposalApprovalDate,
+    this.proposalApprovedBy,
+    this.proposalApprovalNotes,
     this.followUpScheduledDate,
     this.followUpReminderTomorrow = false,
     this.notesThread = const [],
+    this.latestUpdateOn,
+    this.latestUpdatedBy,
   });
+
+  // Auto-computed message
+  String get replyCommitmentMessage => "We will reply to your proposal in $replyCommitmentDays days.";
 
   Map<String, dynamic> toMap() {
     return {
@@ -71,12 +86,18 @@ class PreSalesQuery {
       'queryReceivedDate': Timestamp.fromDate(queryReceivedDate),
       'proposalSentDate': proposalSentDate != null ? Timestamp.fromDate(proposalSentDate!) : null,
       'proposalAcceptedDate': proposalAcceptedDate != null ? Timestamp.fromDate(proposalAcceptedDate!) : null,
+      'proposalRejectedDate': proposalRejectedDate != null ? Timestamp.fromDate(proposalRejectedDate!) : null,
       'proposalStatus': proposalStatus,
       'replyCommitmentDays': replyCommitmentDays,
       'approvalStatus': approvalStatus,
+      'proposalApprovalDate': proposalApprovalDate != null ? Timestamp.fromDate(proposalApprovalDate!) : null,
+      'proposalApprovedBy': proposalApprovedBy,
+      'proposalApprovalNotes': proposalApprovalNotes,
       'followUpScheduledDate': followUpScheduledDate != null ? Timestamp.fromDate(followUpScheduledDate!) : null,
       'followUpReminderTomorrow': followUpReminderTomorrow,
       'notesThread': notesThread.map((n) => n.toMap()).toList(),
+      'latestUpdateOn': latestUpdateOn != null ? Timestamp.fromDate(latestUpdateOn!) : FieldValue.serverTimestamp(),
+      'latestUpdatedBy': latestUpdatedBy,
     };
   }
 
@@ -94,15 +115,21 @@ class PreSalesQuery {
       queryReceivedDate: (data['queryReceivedDate'] as Timestamp).toDate(),
       proposalSentDate: (data['proposalSentDate'] as Timestamp?)?.toDate(),
       proposalAcceptedDate: (data['proposalAcceptedDate'] as Timestamp?)?.toDate(),
+      proposalRejectedDate: (data['proposalRejectedDate'] as Timestamp?)?.toDate(),
       proposalStatus: data['proposalStatus'] ?? 'new',
       replyCommitmentDays: data['replyCommitmentDays'] ?? 2,
       approvalStatus: data['approvalStatus'] ?? 'pending',
+      proposalApprovalDate: (data['proposalApprovalDate'] as Timestamp?)?.toDate(),
+      proposalApprovedBy: data['proposalApprovedBy'],
+      proposalApprovalNotes: data['proposalApprovalNotes'],
       followUpScheduledDate: (data['followUpScheduledDate'] as Timestamp?)?.toDate(),
       followUpReminderTomorrow: data['followUpReminderTomorrow'] ?? false,
       notesThread: (data['notesThread'] as List<dynamic>?)
               ?.map((e) => Note.fromMap(e))
               .toList() ??
           [],
+      latestUpdateOn: (data['latestUpdateOn'] as Timestamp?)?.toDate(),
+      latestUpdatedBy: data['latestUpdatedBy'],
     );
   }
 }

@@ -40,20 +40,20 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBoAohri_rzJ8kv0JdkGl0457Zb9BGBeo0',
-    appId: '1:274120618428:web:ee3982a59222231aebbbb9',
-    messagingSenderId: '274120618428',
-    projectId: 'envirotech-sales-app',
-    authDomain: 'envirotech-sales-app.firebaseapp.com',
-    storageBucket: 'envirotech-sales-app.firebasestorage.app',
+    apiKey: 'AIzaSyBIH4VDW2rMRC1mkVmF_DuJnwD00Qe2Vrk',
+    appId: '1:777910698672:web:b8812236156c4d2dd83175',
+    messagingSenderId: '777910698672',
+    projectId: 'envirotech-sys-2026',
+    authDomain: 'envirotech-sys-2026.firebaseapp.com',
+    storageBucket: 'envirotech-sys-2026.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDXmjtRcjAWYXkK1WbE0M0c50RuUGHimPI',
-    appId: '1:274120618428:android:3d0ed6c0cb0255f8ebbbb9',
-    messagingSenderId: '274120618428',
-    projectId: 'envirotech-sales-app',
-    storageBucket: 'envirotech-sales-app.firebasestorage.app',
+    apiKey: 'AIzaSyC-VCdl6qZUs8bX_j0AbImXnlmizFCuMyc',
+    appId: '1:777910698672:android:d8af55ee2f1590c5d83175',
+    messagingSenderId: '777910698672',
+    projectId: 'envirotech-sys-2026',
+    storageBucket: 'envirotech-sys-2026.firebasestorage.app',
   );
 
 }

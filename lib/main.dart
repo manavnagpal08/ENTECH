@@ -6,23 +6,66 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/repositories/auth_repository.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'core/services/reminder_service.dart';
-import 'core/widgets/responsive_layout.dart';
-// Note: We will import Dashboard screens once created.
-// import 'features/dashboard/screens/dashboard_screen.dart'; 
 
-void main() async {
+import 'features/dashboard/screens/dashboard_screen.dart'; 
+
+import 'package:firebase_auth/firebase_auth.dart'; // Added for User type
+
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
-  // Initialize Background Workers
-  final reminderService = ReminderService();
-  // In a real app, we might use WorkManager here. For now, we call on app start.
-  await reminderService.checkDailyReminders();
-  await reminderService.checkEscalations();
+  runApp(const AppInitializer());
+}
 
-  runApp(const MyApp());
+class AppInitializer extends StatefulWidget {
+  const AppInitializer({super.key});
+
+  @override
+  State<AppInitializer> createState() => _AppInitializerState();
+}
+
+class _AppInitializerState extends State<AppInitializer> {
+  final Future<void> _initFuture = _initialize();
+
+  static Future<void> _initialize() async {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    try {
+      final reminderService = ReminderService();
+      await reminderService.checkDailyReminders();
+      await reminderService.checkEscalations();
+    } catch (e) {
+      debugPrint("Warning: Reminder service failed: $e");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: _initFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          return const MyApp();
+        }
+        if (snapshot.hasError) {
+          return MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: Text('Error initializing app: ${snapshot.error}'),
+              ),
+            ),
+          );
+        }
+        return const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -50,18 +93,17 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authRepo = Provider.of<AuthRepository>(context);
-    return StreamBuilder(
+    final authRepo = Provider.of<AuthRepository>(context, listen: false);
+    return StreamBuilder<User?>(
       stream: authRepo.authStateChanges,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.active) {
-          final user = snapshot.data;
-          if (user == null) {
-            return const LoginScreen();
-          }
-          return const DashboardScreen();
+        if (snapshot.connectionState == ConnectionState.waiting) {
+           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        if (snapshot.hasData) {
+           return const DashboardScreen();
+        }
+        return const LoginScreen();
       },
     );
   }

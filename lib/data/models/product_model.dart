@@ -6,6 +6,7 @@ class ServiceHistoryItem {
   final DateTime resolvedOn;
   final String partsReplacedSummary;
   final String notesSummary;
+  final String warrantyStatusAtService; // 'in_warranty' or 'out_of_warranty'
 
   ServiceHistoryItem({
     required this.ticketId,
@@ -13,6 +14,7 @@ class ServiceHistoryItem {
     required this.resolvedOn,
     required this.partsReplacedSummary,
     required this.notesSummary,
+    required this.warrantyStatusAtService,
   });
 
   Map<String, dynamic> toMap() => {
@@ -21,6 +23,7 @@ class ServiceHistoryItem {
         'resolvedOn': Timestamp.fromDate(resolvedOn),
         'partsReplacedSummary': partsReplacedSummary,
         'notesSummary': notesSummary,
+        'warrantyStatusAtService': warrantyStatusAtService,
       };
 
   factory ServiceHistoryItem.fromMap(Map<String, dynamic> map) {
@@ -30,6 +33,7 @@ class ServiceHistoryItem {
       resolvedOn: (map['resolvedOn'] as Timestamp).toDate(),
       partsReplacedSummary: map['partsReplacedSummary'] ?? '',
       notesSummary: map['notesSummary'] ?? '',
+      warrantyStatusAtService: map['warrantyStatusAtService'] ?? 'unknown',
     );
   }
 }
@@ -53,6 +57,10 @@ class ProductModel {
   final DateTime? lastWarrantyCheck;
   final List<ServiceHistoryItem> serviceHistory;
   final String? serviceCertificateURL;
+  final Map<String, dynamic> location;
+  final String notes;
+  final DateTime? latestUpdatedOn;
+  final String? latestUpdatedBy;
 
   ProductModel({
     required this.id,
@@ -73,6 +81,10 @@ class ProductModel {
     this.lastWarrantyCheck,
     this.serviceHistory = const [],
     this.serviceCertificateURL,
+    this.location = const {},
+    this.notes = '',
+    this.latestUpdatedOn,
+    this.latestUpdatedBy,
   });
 
   bool get isWarrantyValid => DateTime.now().isBefore(warrantyEndDate);
@@ -96,6 +108,10 @@ class ProductModel {
       'lastWarrantyCheck': lastWarrantyCheck != null ? Timestamp.fromDate(lastWarrantyCheck!) : null,
       'serviceHistory': serviceHistory.map((e) => e.toMap()).toList(),
       'serviceCertificateURL': serviceCertificateURL,
+      'location': location,
+      'notes': notes,
+      'latestUpdatedOn': latestUpdatedOn != null ? Timestamp.fromDate(latestUpdatedOn!) : FieldValue.serverTimestamp(),
+      'latestUpdatedBy': latestUpdatedBy,
     };
   }
 
@@ -123,6 +139,10 @@ class ProductModel {
               .toList() ??
           [],
       serviceCertificateURL: data['serviceCertificateURL'],
+      location: data['location'] ?? {},
+      notes: data['notes'] ?? '',
+      latestUpdatedOn: (data['latestUpdatedOn'] as Timestamp?)?.toDate(),
+      latestUpdatedBy: data['latestUpdatedBy'],
     );
   }
 }

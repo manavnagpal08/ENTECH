@@ -1,7 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../data/models/user_model.dart';
-import '../../core/constants/app_constants.dart';
+import '../../../data/models/user_model.dart';
+import '../../../core/constants/app_constants.dart';
 
 class AuthRepository {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -17,7 +18,7 @@ class AuthRepository {
       }
       return null;
     } catch (e) {
-      print(e);
+      // print(e);
       return null;
     }
   }
@@ -44,15 +45,42 @@ class AuthRepository {
   }
 
   Future<void> createEmployee(String email, String password, String name, String role) async {
-     // Note: In a real app, use a Cloud Function to create users so you don't sign out the admin.
-     // For this MVP demo, we will assume this is handled or use a secondary app instance.
-     // Or we just write to Firestore 'users' and let the user sign up themselves for now if Auth API is restrictive.
-     // Given constraints, we'll try standard create.
-     
-     // IMPORTANT: This will sign in as the new user. 
-     // A proper way without Cloud Functions is to create a temp secondary app instance.
-     // Skipping complexity: We will just write the user DOC permissions for now.
-     
-     // Placeholder for Admin User Management logic
+    FirebaseApp? secondaryApp;
+    try {
+      // 1. Initialize a secondary app instance to create user without logging out the admin
+      secondaryApp = await Firebase.initializeApp(
+        name: 'secondary_${DateTime.now().millisecondsSinceEpoch}',
+        options: Firebase.app().options,
+      );
+
+      // 2. Create the user in Auth
+      final userCreds = await FirebaseAuth.instanceFor(app: secondaryApp).createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // 3. Create User Document in Firestore (using main app instance)
+      if (userCreds.user != null) {
+        final newUser = UserModel(
+          uid: userCreds.user!.uid,
+          email: email,
+          name: name,
+          role: role,
+          isActive: true,
+          lastLogin: DateTime.now(),
+          checkInToday: null,
+        );
+        
+        await _firestore.collection(FirestoreCollections.users).doc(newUser.uid).set(newUser.toMap());
+      }
+    } catch (e) {
+      // print("Error creating user: $e");
+      rethrow;
+    } finally {
+      // 4. Clean up secondary app
+      if (secondaryApp != null) {
+        await secondaryApp.delete();
+      }
+    }
   }
 }

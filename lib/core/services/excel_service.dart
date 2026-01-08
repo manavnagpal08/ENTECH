@@ -1,14 +1,15 @@
-import 'dart:io';
+// import 'dart:io'; // REMOVED FOR WEB COMPATIBILITY
 import 'package:excel/excel.dart';
 import 'package:uuid/uuid.dart';
-import '../data/models/presales_query_model.dart';
+import '../../data/models/presales_query_model.dart';
+// import 'dart:typed_data';
 
 class ExcelService {
   final _uuid = const Uuid();
 
-  Future<List<PreSalesQuery>> parsePreSalesExcel(String filePath) async {
+  Future<List<PreSalesQuery>> parsePreSalesExcel(List<int> bytes) async {
     try {
-      final bytes = File(filePath).readAsBytesSync();
+      // final bytes = File(filePath).readAsBytesSync(); // REMOVED
       final excel = Excel.decodeBytes(bytes);
       final List<PreSalesQuery> queries = [];
 
@@ -27,45 +28,83 @@ class ExcelService {
           
           if (row.length < 5) continue; // Skip malformed rows
 
+          // Col 5: Enquiry No & Date (e.g., "101 / 20-04-2025")
+          final enquiryRaw = row.length > 5 ? _getCellValue(row[5]) : '';
+          final queryDate = _parseDateFromText(enquiryRaw) ?? DateTime.now();
+
+          // Col 6: Quotation Date (Proposal Sent)
+          final quoteRaw = row.length > 6 ? _getCellValue(row[6]) : '';
+          final sentDate = _parseDateFromText(quoteRaw);
+
+          // Logic for Status based on dates
+          String status = 'new';
+          if (sentDate != null) status = 'proposal_sent';
+          
+          // Check for "Accepted" in status column if it exists (assuming Col 10 or inferred)
+          // For now, if user said "Proposal Accepted column", let's assume it might be Col 10
+          final acceptedRaw = row.length > 10 ? _getCellValue(row[10]) : '';
+          final acceptedDate = _parseDateFromText(acceptedRaw);
+          if (acceptedDate != null) status = 'accepted';
+
+          // Extract basic info
           final partyName = _getCellValue(row[2]);
           if (partyName.isEmpty) continue;
 
           final contactInfo = _getCellValue(row[4]);
-          final phone = _extractPhone(contactInfo);
-          final email = _extractEmail(contactInfo);
           
-          final address = _getCellValue(row[3]);
-          final city = row.length > 8 ? _getCellValue(row[8]) : '';
-          final state = row.length > 9 ? _getCellValue(row[9]) : '';
-
           queries.add(PreSalesQuery(
             id: _uuid.v4(),
             querySource: 'Excel Import',
             customerName: partyName,
-            phoneNumber: phone,
-            email: email,
+            phoneNumber: _extractPhone(contactInfo),
+            email: _extractEmail(contactInfo),
             location: {
-              'address': address,
-              'city': city,
-              'state': state,
+              'address': _getCellValue(row[3]),
+              'city': row.length > 8 ? _getCellValue(row[8]) : '',
+              'state': row.length > 9 ? _getCellValue(row[9]) : '',
             },
             productQueryDescription: row.length > 7 ? _getCellValue(row[7]) : 'Imported Inquiry',
-            queryReceivedDate: DateTime.now(), // Default as we might not parse complex date strings perfectly
+            queryReceivedDate: queryDate,
+            proposalSentDate: sentDate,
+            proposalAcceptedDate: acceptedDate,
+            proposalStatus: status,
             notesThread: [
               Note(
-                text: 'Imported from Excel. Original Row: ${row[0]?.value}',
-                addedBy: 'System',
+                text: 'Imported from Excel. Original Row: ${row[0]?.value}. Enq: $enquiryRaw',
+                addedBy: 'System (Import)',
                 date: DateTime.now(),
               )
             ],
+            latestUpdateOn: DateTime.now(),
+            latestUpdatedBy: 'System',
           ));
         }
       }
       return queries;
     } catch (e) {
+      // ignore: avoid_print
       print('Error parsing excel: $e');
       rethrow;
     }
+  }
+
+  DateTime? _parseDateFromText(String text) {
+    if (text.isEmpty) return null;
+    // Regex for dd-MM-yyyy or dd/MM/yyyy
+    final regex = RegExp(r'(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})');
+    final match = regex.firstMatch(text);
+    if (match != null) {
+      try {
+        int d = int.parse(match.group(1)!);
+        int m = int.parse(match.group(2)!);
+        int y = int.parse(match.group(3)!);
+        if (y < 100) y += 2000; // Handle yy
+        return DateTime(y, m, d);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   }
 
   String _getCellValue(Data? cell) {

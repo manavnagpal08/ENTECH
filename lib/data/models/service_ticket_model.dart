@@ -58,6 +58,12 @@ class ServiceTicket {
   final String warrantyStatus; // 'in_warranty', 'out_of_warranty'
   final String serviceChargeType; // 'free', 'paid'
   
+  // Proposal & Quotes
+  final DateTime? proposalSentDate;
+  final DateTime? proposalAcceptedDate;
+  final DateTime? proposalRejectedDate;
+  final String proposalStatus; // 'pending', 'sent', 'accepted', 'rejected'
+
   // History & Actions
   final List<EmployeeAction> actions;
   final List<UsedPart> usedParts;
@@ -80,8 +86,12 @@ class ServiceTicket {
     this.followUpReminderTomorrow = false,
     this.warrantyStatus = 'unknown',
     this.serviceChargeType = 'paid',
-    this.actions = const [],
-    this.usedParts = const [],
+    this.proposalSentDate,
+    this.proposalAcceptedDate,
+    this.proposalRejectedDate,
+    this.proposalStatus = 'pending',
+    required this.actions,
+    required this.usedParts,
     this.finalServiceSummary,
     this.mergedNotesSummary,
     this.rating,
@@ -106,6 +116,10 @@ class ServiceTicket {
       'followUpReminderTomorrow': followUpReminderTomorrow,
       'warrantyStatus': warrantyStatus,
       'serviceChargeType': serviceChargeType,
+      'proposalSentDate': proposalSentDate != null ? Timestamp.fromDate(proposalSentDate!) : null,
+      'proposalAcceptedDate': proposalAcceptedDate != null ? Timestamp.fromDate(proposalAcceptedDate!) : null,
+      'proposalRejectedDate': proposalRejectedDate != null ? Timestamp.fromDate(proposalRejectedDate!) : null,
+      'proposalStatus': proposalStatus,
       'actions': actions.map((e) => e.toMap()).toList(),
       'usedParts': usedParts.map((e) => e.toMap()).toList(),
       'finalServiceSummary': finalServiceSummary,
@@ -129,6 +143,10 @@ class ServiceTicket {
       followUpReminderTomorrow: data['followUpReminderTomorrow'] ?? false,
       warrantyStatus: data['warrantyStatus'] ?? 'unknown',
       serviceChargeType: data['serviceChargeType'] ?? 'paid',
+      proposalSentDate: (data['proposalSentDate'] as Timestamp?)?.toDate(),
+      proposalAcceptedDate: (data['proposalAcceptedDate'] as Timestamp?)?.toDate(),
+      proposalRejectedDate: (data['proposalRejectedDate'] as Timestamp?)?.toDate(),
+      proposalStatus: data['proposalStatus'] ?? 'pending',
       actions: (data['actions'] as List<dynamic>?)
               ?.map((e) => EmployeeAction.fromMap(e))
               .toList() ??

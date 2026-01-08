@@ -1,14 +1,9 @@
-import 'product_detail_screen.dart';
-
-//...
-                  onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)));
-                  },
-//...
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_constants.dart';
-import '../../data/models/product_model.dart';
-import '../../../core/utils/logic_engines.dart';
+import 'product_detail_screen.dart';
+import '../../../data/models/product_model.dart';
+// import '../../../core/utils/logic_engines.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProductListScreen extends StatelessWidget {
   const ProductListScreen({super.key});
@@ -46,7 +41,7 @@ class ProductListScreen extends StatelessWidget {
                     labelStyle: TextStyle(color: isWarrantyValid ? Colors.green.shade900 : Colors.red.shade900),
                   ),
                   onTap: () {
-                    // Navigate to Details (with Cert Gen)
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)));
                   },
                 ),
               );

@@ -5,6 +5,7 @@ class UserModel {
   final String role; // 'admin', 'employee'
   final bool isActive;
   final DateTime? lastLogin;
+  final DateTime? checkInToday;
 
   UserModel({
     required this.uid,
@@ -13,6 +14,7 @@ class UserModel {
     required this.role,
     this.isActive = true,
     this.lastLogin,
+    this.checkInToday,
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +25,7 @@ class UserModel {
       'role': role,
       'isActive': isActive,
       'lastLogin': lastLogin?.toIso8601String(),
+      'checkInToday': checkInToday?.toIso8601String(),
     };
   }
 
@@ -34,6 +37,7 @@ class UserModel {
       role: map['role'] ?? 'employee',
       isActive: map['isActive'] ?? true,
       lastLogin: map['lastLogin'] != null ? DateTime.tryParse(map['lastLogin']) : null,
+      checkInToday: map['checkInToday'] != null ? DateTime.tryParse(map['checkInToday']) : null,
     );
   }
 }

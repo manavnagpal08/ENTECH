@@ -1,12 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import '../../../data/models/service_ticket_model.dart';
+import '../repositories/post_sales_repository.dart';
+import '../screens/spare_parts_screen.dart';
 import '../../../core/constants/app_constants.dart';
-import '../../data/models/service_ticket_model.dart';
-import '../../data/models/product_model.dart';
 import '../../../core/services/pdf_service.dart';
-import '../../../core/utils/logic_engines.dart';
+import '../../../data/models/product_model.dart';
 
 class ServiceTicketDetailScreen extends StatefulWidget {
   final ServiceTicket ticket;
@@ -17,221 +17,276 @@ class ServiceTicketDetailScreen extends StatefulWidget {
   State<ServiceTicketDetailScreen> createState() => _ServiceTicketDetailScreenState();
 }
 
-class _ServiceTicketDetailScreenState extends State<ServiceTicketDetailScreen> {
-  final PdfService _pdfService = PdfService();
-  final _summaryCtrl = TextEditingController();
-  final _notesCtrl = TextEditingController();
-  
-  ProductModel? _linkedProduct;
-  bool _isLoading = false;
+class _ServiceTicketDetailScreenState extends State<ServiceTicketDetailScreen> with SingleTickerProviderStateMixin {
+  late ServiceTicket _ticket;
+  late TabController _tabController;
+  final PostSalesRepository _repo = PostSalesRepository();
 
   @override
   void initState() {
     super.initState();
-    _loadProduct();
+    _ticket = widget.ticket;
+    _tabController = TabController(length: 3, vsync: this);
   }
 
-  void _loadProduct() async {
-    // In a real app we'd query by serial number, assuming unique
-    final snapshot = await FirebaseFirestore.instance
-        .collection(FirestoreCollections.products)
-        .where('serialNumber', isEqualTo: widget.ticket.linkedSerialNumber)
-        .limit(1)
-        .get();
-        
-    if (snapshot.docs.isNotEmpty) {
-      if (mounted) {
-        setState(() {
-          _linkedProduct = ProductModel.fromSnapshot(snapshot.docs.first);
-        });
-      }
+  Future<void> _refresh() async {
+    final doc = await FirebaseFirestore.instance.collection(FirestoreCollections.serviceTickets).doc(_ticket.id).get();
+    if (doc.exists) {
+      if (mounted) setState(() => _ticket = ServiceTicket.fromSnapshot(doc));
     }
   }
 
-  void _closeTicket() async {
-    if (_summaryCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Summary required to close')));
-      return;
-    }
-    
-    setState(() => _isLoading = true);
+  // Helper to get current user name
+  String get _currentUserName {
+    // In a real app with Auth Provider:
+    // final user = Provider.of<AuthProvider>(context, listen: false).user;
+    // return user?.displayName ?? 'Unknown User';
+    // For now, allow dynamic input or default to 'Service Tech'
+    return 'Service Tech'; 
+  }
 
-    try {
-      // 1. Generate Merged Notes
-      final mergedNotes = NotesMerger.generateSummary(
-        threadNotes: [], // Fetch real notes if implemented
-        serviceNotes: '${_summaryCtrl.text}\n${_notesCtrl.text}',
-      );
+  void _addPart() async {
+    // Determine which part to add (Basic selector logic)
+    // In real app, open a picker from SpareParts collection
+    final partsSnap = await FirebaseFirestore.instance.collection(FirestoreCollections.spareParts).limit(50).get();
+    final parts = partsSnap.docs.map((d) => SparePart.fromSnapshot(d)).toList();
 
-      // 2. Update Ticket Status
-      await FirebaseFirestore.instance.collection(FirestoreCollections.serviceTickets).doc(widget.ticket.id).update({
-        'status': 'closed',
-        'finalServiceSummary': _summaryCtrl.text,
-        'mergedNotesSummary': mergedNotes,
-      });
+    if (!mounted) return;
 
-      // 3. Update Product History & Counters
-      if (_linkedProduct != null) {
-        final historyItem = ServiceHistoryItem(
-          ticketId: widget.ticket.id,
-          issueDescription: widget.ticket.issueDescription,
-          resolvedOn: DateTime.now(),
-          partsReplacedSummary: widget.ticket.usedParts.map((p) => '${p.qty}x ${p.partName}').join(', '),
-          notesSummary: mergedNotes,
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        SparePart? selectedPart;
+        final qtyCtrl = TextEditingController(text: '1');
+        return AlertDialog(
+          title: const Text('Add Part Replacement'),
+          content: StatefulBuilder(
+            builder: (context, setSt) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButton<SparePart>(
+                  value: selectedPart,
+                  hint: const Text('Select Part'),
+                  isExpanded: true,
+                  items: parts.map((p) => DropdownMenuItem(value: p, child: Text('${p.partName} (Stock: ${p.stockQty})'))).toList(),
+                  onChanged: (v) => setSt(() => selectedPart = v),
+                ),
+                TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Quantity'), keyboardType: TextInputType.number),
+              ],
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () async {
+                 if (selectedPart == null) return;
+                 try {
+                   await _repo.addPartToTicket(_ticket.id, selectedPart!, int.parse(qtyCtrl.text), _currentUserName);
+                   if (context.mounted) Navigator.pop(ctx);
+                   _refresh();
+                 } catch (e) {
+                   if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                 }
+              },
+              child: const Text('Add'),
+            )
+          ],
         );
-        
-        // Use arrayUnion for robust history append
-        // Increment warrantyClaimCount if free service (assuming in_warranty)
-        final isWarrantyClaim = widget.ticket.warrantyStatus == 'in_warranty';
-
-        await FirebaseFirestore.instance.collection(FirestoreCollections.products).doc(_linkedProduct!.id).update({
-          'serviceHistory': FieldValue.arrayUnion([historyItem.toMap()]),
-          'warrantyClaimCount': FieldValue.increment(isWarrantyClaim ? 1 : 0),
-          'lastClaimDate': FieldValue.serverTimestamp(),
-        });
       }
+    );
+  }
 
-      // 4. Generate & Save PDF (Mocking the save simply by generating it to open/share)
-      if (_linkedProduct != null) {
-         // Re-fetch ticket with updated data for PDF
-         final updatedTicket = ServiceTicket(
-            id: widget.ticket.id,
-            linkedSerialNumber: widget.ticket.linkedSerialNumber,
-            issueDescription: widget.ticket.issueDescription,
-            issueReceivedDate: widget.ticket.issueReceivedDate,
-            status: 'closed',
-            assignedEmployeeId: widget.ticket.assignedEmployeeId,
-            assignedEmployeeName: widget.ticket.assignedEmployeeName,
-            finalServiceSummary: _summaryCtrl.text,
-            mergedNotesSummary: mergedNotes,
-            warrantyStatus: widget.ticket.warrantyStatus,
-            usedParts: widget.ticket.usedParts,
-         );
-         await _pdfService.generateServiceTicketReport(updatedTicket, _linkedProduct!);
-      }
+  void _closeTicket() {
+    final summaryCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Close Ticket'),
+        content: TextField(
+          controller: summaryCtrl,
+          decoration: const InputDecoration(labelText: 'Final Service Summary (Mandatory)', border: OutlineInputBorder()),
+          maxLines: 3,
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () async {
+              if (summaryCtrl.text.isEmpty) return;
+              await _repo.closeTicket(_ticket, summaryCtrl.text, _currentUserName);
+              if (context.mounted) Navigator.pop(ctx);
+              _refresh();
+            },
+            child: const Text('Confirm Close'),
+          )
+        ],
+      )
+    );
+  }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ticket Closed & Report Generated')));
-        Navigator.pop(context);
+  void _generatePDF() async {
+      // Need product too
+      final pDoc = await FirebaseFirestore.instance.collection(FirestoreCollections.products).where('serialNumber', isEqualTo: _ticket.linkedSerialNumber).get();
+      if (pDoc.docs.isNotEmpty) {
+        final product = ProductModel.fromSnapshot(pDoc.docs.first);
+        await PdfService().generateServiceTicketReport(_ticket, product);
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isClosed = widget.ticket.status == 'closed';
-
     return Scaffold(
-      appBar: AppBar(title: Text('Ticket #${widget.ticket.id.substring(0, 6)}')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatusCard(),
-            const SizedBox(height: 16),
-            const Text('Issue Details', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text(widget.ticket.issueDescription),
-            const SizedBox(height: 16),
-            if (_linkedProduct != null) ...[
-               const Text('Linked Product', style: TextStyle(fontWeight: FontWeight.bold)),
-               ListTile(
-                 contentPadding: EdgeInsets.zero,
-                 title: Text(_linkedProduct!.productName),
-                 subtitle: Text('SN: ${_linkedProduct!.serialNumber}'),
-                 trailing: Chip(label: Text(widget.ticket.warrantyStatus)),
-               ),
-            ],
-            const Divider(),
-            const Text('Actions', style: TextStyle(fontWeight: FontWeight.bold)),
-            // Add Part Button would go here
-            if (widget.ticket.usedParts.isNotEmpty)
-               ...widget.ticket.usedParts.map((p) => ListTile(
-                 title: Text(p.partName),
-                 trailing: Text('Qty: ${p.qty}'),
-                 leading: const Icon(Icons.settings_input_component),
-               )),
-             
-            const SizedBox(height: 24),
-            if (!isClosed) ...[
-              const Text('Close Ticket', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _summaryCtrl,
-                decoration: const InputDecoration(labelText: 'Final Service Summary', hintText: 'Describe the fix...'),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _notesCtrl,
-                decoration: const InputDecoration(labelText: 'Internal Notes', hintText: 'Tech notes...'),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _closeTicket,
-                  icon: const Icon(Icons.check_circle),
-                  label: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Close Ticket & Generate Report'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                ),
-              ),
-            ] else 
-              Alert(
-                message: 'This ticket is closed.\nSummary: ${widget.ticket.finalServiceSummary}',
-                type: 'info',
-              ),
+      appBar: AppBar(
+        title: Text('Ticket #${_ticket.id.substring(0, 6)}'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Overview'),
+            Tab(text: 'Parts & Actions'),
+            Tab(text: 'Feedback'),
           ],
         ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildOverview(),
+          _buildPartsAndActions(),
+          _buildFeedback(),
+        ],
       ),
     );
   }
 
-  Widget _buildStatusCard() {
-    return Card(
-      color: widget.ticket.status == 'closed' ? Colors.grey.shade100 : Colors.blue.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
+  Widget _buildOverview() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildInfoCard('Status', _ticket.status.toUpperCase(), 
+          color: _ticket.status == 'closed' ? Colors.green : Colors.orange),
+        const SizedBox(height: 16),
+        _buildInfoCard('Warranty', _ticket.warrantyStatus == 'in_warranty' ? 'IN WARRANTY (FREE)' : 'OUT OF WARRANTY (PAID)',
+          color: _ticket.warrantyStatus == 'in_warranty' ? Colors.green : Colors.red),
+         const SizedBox(height: 16),
+        const Text('Issue Description', style: TextStyle(fontWeight: FontWeight.bold)),
+        Text(_ticket.issueDescription, style: const TextStyle(fontSize: 16)),
+        const SizedBox(height: 24),
+        if (_ticket.status != 'closed')
+          Row(
+            children: [
+              Expanded(child: ElevatedButton.icon(onPressed: _closeTicket, icon: const Icon(Icons.check), label: const Text('Close Ticket'))),
+              const SizedBox(width: 8),
+              Expanded(child: OutlinedButton.icon(onPressed: _generatePDF, icon: const Icon(Icons.print), label: const Text('Report PDF'))),
+            ],
+          )
+        else 
+           OutlinedButton.icon(onPressed: _generatePDF, icon: const Icon(Icons.print), label: const Text('Download Final Report')),
+      ],
+    );
+  }
+
+  Widget _buildPartsAndActions() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Icon(Icons.info_outline),
-            const SizedBox(width: 12),
-            Column(
-               crossAxisAlignment: CrossAxisAlignment.start,
-               children: [
-                 Text('Status: ${widget.ticket.status.toUpperCase()}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                 Text('Received: ${DateFormat('dd MMM yyyy').format(widget.ticket.issueReceivedDate)}'),
-               ],
-            ),
+            const Text('Replaced Parts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            if (_ticket.status != 'closed') SmallButton(text: '+ Add Part', onPressed: _addPart),
           ],
         ),
+        ..._ticket.usedParts.map((p) => ListTile(
+          title: Text(p.partName),
+          subtitle: Text('Replaced on ${DateFormat('dd MMM').format(p.replacedOn)}'),
+          trailing: Text('Qty: ${p.qty}', style: const TextStyle(fontWeight: FontWeight.bold)),
+        )),
+        const Divider(),
+        const Text('Action Log', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        ..._ticket.actions.map((a) => ListTile(
+          title: Text(a.action),
+          subtitle: Text('${a.employeeName} • ${DateFormat('dd MMM HH:mm').format(a.date)}'),
+        )),
+      ],
+    );
+  }
+
+  Widget _buildFeedback() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          if (_ticket.status != 'closed')
+            const Center(child: Text('Feedback is collected after ticket closure.'))
+          else if (_ticket.rating != null)
+             Column(
+               children: [
+                 const Icon(Icons.star, size: 48, color: Colors.amber),
+                 Text('${_ticket.rating} / 5', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                 const SizedBox(height: 16),
+                 Text('"${_ticket.feedbackText}"', style: const TextStyle(fontStyle: FontStyle.italic)),
+               ],
+             )
+          else
+            ElevatedButton(
+              onPressed: () {
+                // Show feedback dialog
+                int rating = 5;
+                final txtCtrl = TextEditingController();
+                showDialog(context: context, builder: (ctx) => AlertDialog(
+                  title: const Text('Collect Feedback'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Rate 1-5'),
+                      TextField(controller: txtCtrl, decoration: const InputDecoration(labelText: 'Comments')),
+                    ],
+                  ),
+                  actions: [
+                     ElevatedButton(onPressed: () async {
+                       await _repo.submitFeedback(_ticket.id, rating, txtCtrl.text);
+                       if (context.mounted) {
+                         Navigator.pop(ctx);
+                         _refresh();
+                       }
+                     }, child: const Text('Submit'))
+                  ],
+                ));
+              }, 
+              child: const Text('Record Customer Feedback')
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(String title, String value, {Color color = Colors.blue}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }
 }
 
-class Alert extends StatelessWidget {
-  final String message;
-  final String type;
-  const Alert({super.key, required this.message, required this.type});
+class SmallButton extends StatelessWidget {
+  final String text;
+  final VoidCallback onPressed;
+  const SmallButton({super.key, required this.text, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: type == 'info' ? Colors.blue.shade50 : Colors.orange.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: type == 'info' ? Colors.blue.shade200 : Colors.orange.shade200),
-      ),
-      child: Text(message),
+    return TextButton(
+      style: TextButton.styleFrom(backgroundColor: Colors.blue.shade50),
+      onPressed: onPressed,
+      child: Text(text),
     );
   }
 }

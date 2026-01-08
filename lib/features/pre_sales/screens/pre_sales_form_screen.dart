@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../data/models/presales_query_model.dart';
+import '../../../data/models/presales_query_model.dart';
 import '../../../core/constants/app_constants.dart';
 import 'package:uuid/uuid.dart';
 
@@ -21,6 +21,7 @@ class _PreSalesFormScreenState extends State<PreSalesFormScreen> {
   late TextEditingController _emailCtrl;
   late TextEditingController _productCtrl;
   late TextEditingController _sourceCtrl;
+  late TextEditingController _slaCtrl;
   final Uuid _uuid = const Uuid();
 
   @override
@@ -31,6 +32,7 @@ class _PreSalesFormScreenState extends State<PreSalesFormScreen> {
     _emailCtrl = TextEditingController(text: widget.query?.email ?? '');
     _productCtrl = TextEditingController(text: widget.query?.productQueryDescription ?? '');
     _sourceCtrl = TextEditingController(text: widget.query?.querySource ?? 'Manual');
+    _slaCtrl = TextEditingController(text: (widget.query?.replyCommitmentDays ?? 2).toString());
   }
 
   void _save() async {
@@ -45,6 +47,9 @@ class _PreSalesFormScreenState extends State<PreSalesFormScreen> {
       email: _emailCtrl.text,
       productQueryDescription: _productCtrl.text,
       queryReceivedDate: widget.query?.queryReceivedDate ?? DateTime.now(),
+      replyCommitmentDays: int.tryParse(_slaCtrl.text) ?? 2,
+      latestUpdateOn: DateTime.now(),
+      latestUpdatedBy: 'Employee (Manual Entry)',
       notesThread: widget.query?.notesThread ?? [],
       // Keep other fields as default/existing
     );
@@ -53,7 +58,7 @@ class _PreSalesFormScreenState extends State<PreSalesFormScreen> {
       await FirebaseFirestore.instance.collection(FirestoreCollections.preSalesQueries).doc(id).set(newQuery.toMap());
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 

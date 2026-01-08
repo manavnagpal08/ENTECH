@@ -1,14 +1,9 @@
-import 'service_ticket_detail_screen.dart';
-
-//...
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => ServiceTicketDetailScreen(ticket: ticket)));
-                },
-//...
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_constants.dart';
-import '../../data/models/service_ticket_model.dart';
+import '../../../data/models/service_ticket_model.dart';
 import 'package:intl/intl.dart';
+import 'service_ticket_detail_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ServiceTicketListScreen extends StatefulWidget {
   const ServiceTicketListScreen({super.key});
@@ -82,7 +77,7 @@ class _ServiceTicketListScreenState extends State<ServiceTicketListScreen> with 
                 subtitle: Text('#${ticket.id.substring(0,6)} • ${DateFormat('dd MMM').format(ticket.issueReceivedDate)}'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
-                  // Navigate to Detail
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => ServiceTicketDetailScreen(ticket: ticket)));
                 },
               ),
             );

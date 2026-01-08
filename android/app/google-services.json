@@ -1,32 +1,13 @@
 {
   "project_info": {
-    "project_number": "274120618428",
-    "project_id": "envirotech-sales-app",
-    "storage_bucket": "envirotech-sales-app.firebasestorage.app"
+    "project_number": "777910698672",
+    "project_id": "envirotech-sys-2026",
+    "storage_bucket": "envirotech-sys-2026.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:274120618428:android:53b9c3e749eb7d4eebbbb9",
-        "android_client_info": {
-          "package_name": "com.envirotech.emvirotech"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDXmjtRcjAWYXkK1WbE0M0c50RuUGHimPI"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:274120618428:android:3d0ed6c0cb0255f8ebbbb9",
+        "mobilesdk_app_id": "1:777910698672:android:d8af55ee2f1590c5d83175",
         "android_client_info": {
           "package_name": "com.envirotech.envirotech"
         }
@@ -34,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDXmjtRcjAWYXkK1WbE0M0c50RuUGHimPI"
+          "current_key": "AIzaSyC-VCdl6qZUs8bX_j0AbImXnlmizFCuMyc"
         }
       ],
       "services": {

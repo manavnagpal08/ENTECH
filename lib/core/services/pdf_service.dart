@@ -1,4 +1,4 @@
-import 'dart:io';
+
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -162,7 +162,7 @@ class PdfService {
   }
 
   pw.Widget _buildPartsTable(List<UsedPart> parts) {
-    return pw.Table.fromTextArray(
+    return pw.TableHelper.fromTextArray(
       headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
       headerHeight: 25,
       cellHeight: 30,
