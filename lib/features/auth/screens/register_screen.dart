@@ -47,20 +47,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Admin Registered! Please Login.')));
         Navigator.pop(context);
       }
-    } on FirebaseAuthException catch (e) {
-      if (mounted) {
-        String msg = 'Registration Error: ${e.message}';
-        if (e.code == 'operation-not-allowed') {
-          msg = 'Enable Email/Password Sign-in in Firebase Console!';
-        } else if (e.code == 'email-already-in-use') {
-          msg = 'Email already registered. Please Login.';
-        }
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
-      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('System Error: $e'), backgroundColor: Colors.red));
+        // Handle generic or platform errors
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Registration Failed: $e'), 
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ));
       }
+
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
