@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../repositories/auth_repository.dart';
-import 'register_screen.dart';
+import '../../dashboard/screens/dashboard_screen.dart'; // Import Dashboard for manual navigation
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -29,7 +29,12 @@ class _LoginScreenState extends State<LoginScreen> {
     
     try {
       await repo.login(email, password);
-      // Navigation is handled by the AuthWrapper in main.dart
+      // MANUAL NAVIGATION FOR TRIAL (Bypassing AuthWrapper)
+      if (mounted) {
+         Navigator.of(context).pushReplacement(
+           MaterialPageRoute(builder: (_) => const DashboardScreen()),
+         );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -54,6 +59,13 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+               // DEPLOYMENT ID TEXT
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(color: Colors.blueGrey.shade100, borderRadius: BorderRadius.circular(20)),
+                child: const Text("Deployment No: TRIAL-V1-2026", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+              ),
+              const SizedBox(height: 24),
               // Logo & Brand
               Container(
                 padding: const EdgeInsets.all(16),
@@ -104,25 +116,31 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Welcome Back',
+                        'Trial Access',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                       const SizedBox(height: 8),
+                      const Text(
+                        'Enter Department Name & Pass: 123456',
+                        style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 32),
                       
-                      // Email Field
+                      // Email Field which acts as Department/Username
                       TextFormField(
                         controller: _emailController,
                         decoration: InputDecoration(
-                          labelText: 'Email Address',
-                          hintText: 'name@company.com',
-                          prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                          labelText: 'Department / Username',
+                          hintText: 'e.g. Admin, Sales, Service',
+                          prefixIcon: const Icon(Icons.business, size: 20),
                           filled: true,
                           fillColor: AppColors.background,
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                         ),
-                        validator: (v) => v!.isEmpty ? 'Email is required' : null,
+                        validator: (v) => v!.isEmpty ? 'Required' : null,
                       ),
                       const SizedBox(height: 20),
                       
@@ -158,28 +176,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           child: _isLoading 
                              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                             : const Text('Sign In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                             : const Text('Access Trial', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      
-                      // Register Link
-                      Center(
-                        child: TextButton(
-                          onPressed: () {
-                             Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen()));
-                          },
-                          child: RichText(
-                            text: TextSpan(
-                              text: "Need access? ",
-                              style: const TextStyle(color: AppColors.textSecondary),
-                              children: const [
-                                TextSpan(text: "Register Admin", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+           
                     ],
                   ),
                 ),
@@ -188,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
               
               // Footer
               Text(
-                '© 2026 Envirotech Systems. All rights reserved.',
+                '© 2026 Envirotech Systems. Trial Mode.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary.withValues(alpha: 0.5)),
               ),
             ],
@@ -198,4 +198,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-
