@@ -9,7 +9,6 @@ import '../../amc/screens/amc_list_screen.dart';
 import '../screens/reminder_list_screen.dart';
 import '../../pre_sales/screens/pre_sales_list_screen.dart';
 import '../../../core/theme/app_theme.dart';
-import '../widgets/analytics_card.dart';
 import '../../settings/screens/support_screen.dart';
 
 class WebDashboard extends StatelessWidget {
@@ -27,6 +26,7 @@ class WebDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       body: Row(
         children: [
           // Sidebar
@@ -34,6 +34,8 @@ class WebDashboard extends StatelessWidget {
             selectedIndex: selectedIndex,
             onDestinationSelected: onNavTap,
             labelType: NavigationRailLabelType.all,
+            backgroundColor: Colors.white,
+            elevation: 5,
             leading: Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: const Icon(Icons.eco, color: AppColors.primary, size: 40),
@@ -41,59 +43,22 @@ class WebDashboard extends StatelessWidget {
             trailing: Padding(
               padding: const EdgeInsets.only(top: 20),
               child: IconButton(
-                icon: const Icon(Icons.logout),
+                icon: const Icon(Icons.logout, color: Colors.red),
                 onPressed: onLogout,
               ),
             ),
             destinations: const [
-              NavigationRailDestination(
-                icon: Icon(Icons.dashboard_outlined),
-                selectedIcon: Icon(Icons.dashboard),
-                label: Text('Overview'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.question_answer_outlined),
-                selectedIcon: Icon(Icons.question_answer),
-                label: Text('Pre-Sales'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.inventory_2_outlined),
-                selectedIcon: Icon(Icons.inventory_2),
-                label: Text('Products'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.handshake_outlined),
-                selectedIcon: Icon(Icons.handshake),
-                label: Text('AMC'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.notifications_active_outlined),
-                selectedIcon: Icon(Icons.notifications_active),
-                label: Text('Reminders'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.support_agent_outlined),
-                selectedIcon: Icon(Icons.support_agent),
-                label: Text('Service Desk'),
-              ),
-              NavigationRailDestination(
-                  icon: Icon(Icons.settings_input_component_outlined),
-                  selectedIcon: Icon(Icons.settings_input_component),
-                  label: Text('Spare Parts'),
-               ),
-               NavigationRailDestination(
-                  icon: Icon(Icons.people_outline),
-                  selectedIcon: Icon(Icons.people),
-                  label: Text('Admin'),
-               ),
-               NavigationRailDestination(
-                  icon: Icon(Icons.headset_mic_outlined),
-                  selectedIcon: Icon(Icons.headset_mic),
-                  label: Text('Support'),
-               ),
+              NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: Text('Overview')),
+              NavigationRailDestination(icon: Icon(Icons.question_answer_outlined), selectedIcon: Icon(Icons.question_answer), label: Text('Pre-Sales')),
+              NavigationRailDestination(icon: Icon(Icons.inventory_2_outlined), selectedIcon: Icon(Icons.inventory_2), label: Text('Products')),
+              NavigationRailDestination(icon: Icon(Icons.handshake_outlined), selectedIcon: Icon(Icons.handshake), label: Text('AMC')),
+              NavigationRailDestination(icon: Icon(Icons.notifications_active_outlined), selectedIcon: Icon(Icons.notifications_active), label: Text('Reminders')),
+              NavigationRailDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: Text('Service Desk')),
+              NavigationRailDestination(icon: Icon(Icons.settings_input_component_outlined), selectedIcon: Icon(Icons.settings_input_component), label: Text('Spare Parts')),
+              NavigationRailDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people), label: Text('Admin')),
+              NavigationRailDestination(icon: Icon(Icons.headset_mic_outlined), selectedIcon: Icon(Icons.headset_mic), label: Text('Support')),
             ],
           ),
-          const VerticalDivider(thickness: 1, width: 1),
           // Main Content
           Expanded(
             child: _buildBody(context),
@@ -117,122 +82,147 @@ class WebDashboard extends StatelessWidget {
   }
 
   Widget _buildOverview(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return FutureBuilder<Map<String, int>>(
+      future: _fetchDashboardStats(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        final data = snapshot.data!;
+        
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Dashboard Overview", style: Theme.of(context).textTheme.headlineMedium),
-              FutureBuilder<Map<String, int>>(
-                future: _fetchDashboardStats(), 
-                builder: (context, snapshot) {
-                  final count = (snapshot.data?['sla_today'] ?? 0) + (snapshot.data?['sla_breaches'] ?? 0);
-                  return IconButton(
-                    onPressed: () => onNavTap(4), // Go to Reminders
-                    icon: Badge(
-                      label: Text(count.toString()),
-                      isLabelVisible: count > 0,
-                      child: const Icon(Icons.notifications, size: 32),
-                    ),
-                  );
-                }
+              // Header Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Welcome back, Verified Admin", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.grey.shade800)),
+                      Text("Here's what's happening today.", style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600)),
+                    ],
+                  ),
+                  _buildNotificationBadge(data['sla_today'] ?? 0),
+                ],
+              ),
+              const SizedBox(height: 32),
+
+              Text("Key Performance Indicators", style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+
+              // KPI Grid
+              GridView.count(
+                crossAxisCount: 4,
+                crossAxisSpacing: 20,
+                mainAxisSpacing: 20,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  _buildPremiumCard('Enquiries', data['total'].toString(), Icons.contact_mail, Colors.blue, 0, context),
+                  _buildPremiumCard('Proposals Sent', data['sent'].toString(), Icons.send, Colors.orange, 0, context),
+                  _buildPremiumCard('Pending Approvals', data['approvals'].toString(), Icons.verified_user, Colors.purple, 1, context),
+                  _buildPremiumCard('SLA Due Today', data['sla_today'].toString(), Icons.timer_outlined, Colors.redAccent, 4, context),
+                  _buildPremiumCard('Active Warranty', data['active_warranty'].toString(), Icons.verified, Colors.green, 2, context),
+                  _buildPremiumCard('Open Tickets', data['open_tickets'].toString(), Icons.support_agent, Colors.blueAccent, 5, context),
+                  _buildPremiumCard('SLA Breaches', data['sla_breaches'].toString(), Icons.warning_amber_rounded, Colors.red, 5, context),
+                  _buildPremiumCard('Total Sold', data['total_products'].toString(), Icons.shopping_bag_outlined, Colors.teal, 2, context),
+                ],
+              ),
+              
+              const SizedBox(height: 32),
+              // Secondary Stats Section
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [Colors.indigo.shade50, Colors.white]),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.indigo.shade100),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildMiniStat('Warranty Claim Rate', "${data['warranty_claim_percent']}%", Colors.orange),
+                    Container(height: 40, width: 1, color: Colors.grey.shade300),
+                    _buildMiniStat('Expired Warranties', data['expired_warranty'].toString(), Colors.grey),
+                    Container(height: 40, width: 1, color: Colors.grey.shade300),
+                    _buildMiniStat('System Health', '98%', Colors.green),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          Expanded(
-            child: FutureBuilder<Map<String, int>>(
-              future: _fetchDashboardStats(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                final data = snapshot.data!;
-                return GridView.count(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  children: [
-                    AnalyticsCard(
-                      title: 'Total Enquiries',
-                      value: data['total'].toString(),
-                      icon: Icons.contact_mail,
-                      color: Colors.blue,
-                      onTap: () => onNavTap(1),
-                    ),
-                    AnalyticsCard(
-                      title: 'Proposals Sent',
-                      value: data['sent'].toString(),
-                      icon: Icons.send,
-                      color: Colors.orange,
-                      onTap: () => onNavTap(1),
-                    ),
-                    AnalyticsCard(
-                      title: 'SLA Due Today',
-                      value: data['sla_today'].toString(),
-                      icon: Icons.timer,
-                      color: Colors.redAccent,
-                      onTap: () {
-                        // Navigator.push(context, MaterialPageRoute(builder: (_) => const ReminderListScreen()));
-                      },
-                    ),
-                    AnalyticsCard(
-                      title: 'Pending Approvals',
-                      value: data['approvals'].toString(),
-                      icon: Icons.verified_user,
-                      color: Colors.purple,
-                      onTap: () => onNavTap(1), 
-                    ),
-                    AnalyticsCard(
-                      title: 'Active Warranty',
-                      value: data['active_warranty'].toString(),
-                      icon: Icons.verified,
-                      color: Colors.green,
-                      onTap: () => onNavTap(2), // Products
-                    ),
-                    AnalyticsCard(
-                      title: 'Expired Warranty',
-                      value: data['expired_warranty'].toString(),
-                      icon: Icons.cancel,
-                      color: Colors.red.shade300,
-                      onTap: () => onNavTap(2),
-                    ),
-                    AnalyticsCard(
-                      title: 'Open Tickets',
-                      value: data['open_tickets'].toString(),
-                      icon: Icons.support_agent,
-                      color: Colors.blueAccent,
-                      onTap: () => onNavTap(5), // Service Desk (Index 5)
-                    ),
-                    AnalyticsCard(
-                      title: 'SLA Breaches',
-                      value: data['sla_breaches'].toString(),
-                      icon: Icons.warning,
-                      color: Colors.red,
-                    ),
-                    AnalyticsCard(
-                      title: 'Total Products Sold',
-                      value: data['total_products'].toString(),
-                      icon: Icons.shopping_bag,
-                      color: Colors.teal,
-                      onTap: () => onNavTap(2),
-                    ),
-                    AnalyticsCard(
-                      title: 'Warranty Claim Rate',
-                      value: '${data['warranty_claim_percent']}%',
-                      icon: Icons.percent,
-                      color: Colors.orangeAccent,
-                    ),
-                  ],
-                );
-              },
+        );
+      },
+    );
+  }
+
+  Widget _buildPremiumCard(String title, String value, IconData icon, Color color, int navIndex, BuildContext context) {
+    return Card(
+      elevation: 4,
+      shadowColor: color.withOpacity(0.3),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        onTap: () => onNavTap(navIndex),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Colors.white, color.withOpacity(0.05)],
             ),
           ),
-        ],
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(value, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.grey.shade800)),
+                  Text(title, style: TextStyle(fontSize: 14, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+                ],
+              )
+            ],
+          ),
+        ),
       ),
     );
   }
+
+  Widget _buildMiniStat(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+      ],
+    );
+  }
+
+  Widget _buildNotificationBadge(int count) {
+    return IconButton(
+      onPressed: () => onNavTap(4),
+      icon: Badge(
+        label: Text(count.toString()),
+        isLabelVisible: count > 0,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+          child: const Icon(Icons.notifications_outlined, size: 28, color: Colors.black87),
+        ),
+      ),
+    );
+  }
+
   Future<Map<String, int>> _fetchDashboardStats() async {
     try {
       final firestore = FirebaseFirestore.instance;
@@ -243,15 +233,13 @@ class WebDashboard extends StatelessWidget {
       final total = queries.length;
       final sent = queries.where((d) => d['proposalStatus'] == 'proposal_sent').length;
       final approvals = queries.where((d) => d['approvalStatus'] == 'pending').length;
-      // Simple date check for SLA
+      
       final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
       final slaToday = queries.where((d) {
          final received = (d['queryReceivedDate'] as Timestamp?)?.toDate(); 
          final days = d['replyCommitmentDays'] as int? ?? 2;
          if (received == null) return false;
          final due = received.add(Duration(days: days));
-         
          return due.year == now.year && due.month == now.month && due.day == now.day;
       }).length;
 
@@ -273,7 +261,6 @@ class WebDashboard extends StatelessWidget {
       final tickets = ticketsSnap.docs;
       final openTickets = tickets.where((d) => (d['status'] ?? '') == 'Open').length;
       final slaBreaches = tickets.where((d) {
-         // robust check
          if (!d.data().containsKey('slaDueDate')) return false;
          final due = (d['slaDueDate'] as Timestamp?)?.toDate();
          final status = d['status'] ?? '';
@@ -281,9 +268,6 @@ class WebDashboard extends StatelessWidget {
          return due.isBefore(now);
       }).length;
       
-      // 4. Claim Rate
-      // Calculate based on products with history entries containing 'warranty_claim'
-      // For now, simpler metric: (Total Tickets / Total Products) * 100 if > 0
       int claimPercent = 0;
       if (totalProducts > 0) {
         claimPercent = ((tickets.length / totalProducts) * 100).round();

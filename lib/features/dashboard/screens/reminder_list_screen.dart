@@ -12,19 +12,25 @@ class ReminderListScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('My Daily Tasks')),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection(FirestoreCollections.reminderLogs)
-            .where('completionStatus', isEqualTo: 'pending') // Only show pending
-            .orderBy('reminderDate', descending: true)
+            .where('completionStatus', isEqualTo: 'pending')
             .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           if (snapshot.data!.docs.isEmpty) return const Center(child: Text("All caught up! No tasks."));
 
+          final docs = snapshot.data!.docs;
+          docs.sort((a, b) {
+            final dateA = (a.data() as Map<String, dynamic>)['reminderDate'] as Timestamp;
+            final dateB = (b.data() as Map<String, dynamic>)['reminderDate'] as Timestamp;
+            return dateB.compareTo(dateA); // Descending
+          });
+
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: snapshot.data!.docs.length,
+            itemCount: docs.length,
             itemBuilder: (context, index) {
-              final data = snapshot.data!.docs[index].data() as Map<String, dynamic>;
-              final id = snapshot.data!.docs[index].id;
+              final data = docs[index].data() as Map<String, dynamic>;
+              final id = docs[index].id;
               final isEscalated = data['escalationStatus'] == 'escalated';
               final type = data['reminderType'] ?? 'General';
               final date = (data['reminderDate'] as Timestamp).toDate();

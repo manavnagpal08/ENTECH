@@ -9,7 +9,7 @@ import '../../data/models/product_model.dart';
 class PdfService {
   Future<void> generateServiceTicketReport(ServiceTicket ticket, ProductModel product) async {
     final pdf = pw.Document();
-    final logoImage = await imageFromAssetBundle(AppAssets.logo);
+    final logoImage = await networkImage('https://envirotechindia.com/wp-content/uploads/2020/03/Envirotech-Logo_new-1.png');
     final font = await PdfGoogleFonts.interRegular();
     final fontBold = await PdfGoogleFonts.interBold();
 
@@ -106,7 +106,7 @@ class PdfService {
 
   Future<void> generateWarrantyCertificate(ProductModel product) async {
     final pdf = pw.Document();
-    final logoImage = await imageFromAssetBundle(AppAssets.logo);
+    final logoImage = await networkImage('https://envirotechindia.com/wp-content/uploads/2020/03/Envirotech-Logo_new-1.png');
     final font = await PdfGoogleFonts.interRegular();
     final fontBold = await PdfGoogleFonts.interBold();
 
