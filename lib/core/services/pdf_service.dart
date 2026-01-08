@@ -2,14 +2,30 @@
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:flutter/services.dart';
 import '../constants/app_constants.dart';
 import '../../data/models/service_ticket_model.dart';
 import '../../data/models/product_model.dart';
 
 class PdfService {
+  Future<pw.ImageProvider?> _loadLogo() async {
+    try {
+      // Try local asset first
+      return await imageFromAssetBundle('assets/images/logo.png');
+    } catch (e) {
+      try {
+        // Fallback to network if local fails
+        return await networkImage('https://envirotechindia.com/wp-content/uploads/2020/03/Envirotech-Logo_new-1.png');
+      } catch (e2) {
+        // Return null if both fail - will show text instead
+        return null;
+      }
+    }
+  }
+
   Future<void> generateServiceTicketReport(ServiceTicket ticket, ProductModel product) async {
     final pdf = pw.Document();
-    final logoImage = await imageFromAssetBundle('assets/images/logo.png');
+    final logoImage = await _loadLogo();
     final font = await PdfGoogleFonts.interRegular();
     final fontBold = await PdfGoogleFonts.interBold();
 
@@ -106,10 +122,9 @@ class PdfService {
 
   Future<void> generateWarrantyCertificate(ProductModel product) async {
     final pdf = pw.Document();
-    final logoImage = await imageFromAssetBundle('assets/images/logo.png');
+    final logoImage = await _loadLogo();
     final font = await PdfGoogleFonts.interRegular();
     final fontBold = await PdfGoogleFonts.interBold();
-
 
     pdf.addPage(
       pw.Page(
@@ -165,10 +180,14 @@ class PdfService {
     );
   }
 
-  pw.Widget _buildHeader(pw.ImageProvider logo) {
+  pw.Widget _buildHeader(pw.ImageProvider? logo) {
     return pw.Column(
       children: [
-        pw.Image(logo, width: 80, height: 80),
+        if (logo != null)
+           pw.Image(logo, width: 80, height: 80)
+        else
+           pw.Text("ENVIROTECH SYSTEM", style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.green800)),
+        
         pw.SizedBox(height: 10),
         pw.Text(AppStrings.appName, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
         pw.Text(AppStrings.tagline, style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
