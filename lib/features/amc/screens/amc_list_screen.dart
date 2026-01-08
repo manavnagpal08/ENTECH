@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../../data/models/amc_model.dart';
 import '../../../../core/constants/app_constants.dart';
+import 'amc_create_screen.dart';
 
 class AmcListScreen extends StatelessWidget {
   const AmcListScreen({super.key});
@@ -69,7 +70,6 @@ class AmcListScreen extends StatelessWidget {
   }
 
   void _createAmc(BuildContext context) {
-    // Simple placeholder for creating AMC
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('AMC Creation Form coming soon! Use Firebase Console for now.')));
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const AmcCreateScreen()));
   }
 }

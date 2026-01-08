@@ -193,9 +193,9 @@ class _PreSalesListScreenState extends State<PreSalesListScreen> {
                   // 3. Search Filter
                   if (_searchQuery.isNotEmpty) {
                     final search = _searchQuery.toLowerCase();
-                    final matches = q.customerName.toLowerCase().contains(search) ||
-                                    q.company.toLowerCase().contains(search) || 
-                                    q.productQueryDescription.toLowerCase().contains(search) ||
+                    final matches = (q.customerName ?? '').toLowerCase().contains(search) ||
+                                    (q.company ?? '').toLowerCase().contains(search) ||
+                                    (q.productQueryDescription ?? '').toLowerCase().contains(search) ||
                                     q.location.values.any((v) => v.toString().toLowerCase().contains(search));
                     if (!matches) return false;
                   }
@@ -287,7 +287,7 @@ class _PreSalesListScreenState extends State<PreSalesListScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(query.company.isNotEmpty ? query.company : query.customerName, 
+                        Text((query.company ?? '').isNotEmpty ? query.company! : (query.customerName ?? 'Unknown'), 
                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         if (query.followUpReminderTomorrow) ...[
                           const SizedBox(width: 8),

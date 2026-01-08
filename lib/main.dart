@@ -26,13 +26,14 @@ class _AppInitializerState extends State<AppInitializer> {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    try {
-      final reminderService = ReminderService();
-      await reminderService.checkDailyReminders();
-      await reminderService.checkEscalations();
-    } catch (e) {
-      debugPrint("Warning: Reminder service failed: $e");
-    }
+    // Don't block app start for reminders. They can load in background.
+    // try {
+    //   final reminderService = ReminderService();
+    //   await reminderService.checkDailyReminders();
+    //   await reminderService.checkEscalations();
+    // } catch (e) {
+    //   debugPrint("Warning: Reminder service failed: $e");
+    // }
   }
 
   @override
