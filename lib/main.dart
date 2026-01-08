@@ -93,18 +93,9 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authRepo = Provider.of<AuthRepository>(context, listen: false);
-    return StreamBuilder<User?>(
-      stream: authRepo.authStateChanges,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-           return const Scaffold(body: Center(child: CircularProgressIndicator()));
-        }
-        if (snapshot.hasData) {
-           return const DashboardScreen();
-        }
-        return const LoginScreen();
-      },
-    );
+    // BYPASS STREAM BUILDER FOR TRIAL
+    // Since mock stream has no initial value, this waits forever.
+    // LoginScreen handles navigation manually now.
+    return const LoginScreen();
   }
 }
