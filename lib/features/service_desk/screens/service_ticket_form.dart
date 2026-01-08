@@ -61,18 +61,16 @@ class _ServiceTicketFormState extends State<ServiceTicketForm> {
       final id = const Uuid().v4();
       final newTicket = ServiceTicket(
         id: id,
-        productId: _selectedProduct!.id,
-        productName: _selectedProduct!.productName,
-        serialNumber: _selectedProduct!.serialNumber,
-        customerId: 'guest', 
-        customerName: _customerCtrl.text,
-        phoneNumber: _phoneCtrl.text,
-        issueDescription: _descCtrl.text,
-        dateCreated: DateTime.now(),
+        linkedSerialNumber: _selectedProduct!.serialNumber,
+        issueDescription: "${_descCtrl.text}\n\nContact: ${_customerCtrl.text} (${_phoneCtrl.text})",
         issueReceivedDate: DateTime.now(),
         status: 'open',
-        priority: 'medium',
-        assignedTechnicianId: null,
+        assignedEmployeeId: 'unassigned',
+        assignedEmployeeName: 'Unassigned',
+        actions: [],
+        usedParts: [],
+        serviceSLAReplyDays: 2,
+        warrantyStatus: (_selectedProduct?.isWarrantyValid ?? false) ? 'in_warranty' : 'out_of_warranty',
       );
 
       await FirebaseFirestore.instance.collection(FirestoreCollections.serviceTickets).doc(id).set(newTicket.toMap());
