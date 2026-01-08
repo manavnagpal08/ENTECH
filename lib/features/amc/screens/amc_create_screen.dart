@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../../data/models/amc_model.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 
 class AmcCreateScreen extends StatefulWidget {

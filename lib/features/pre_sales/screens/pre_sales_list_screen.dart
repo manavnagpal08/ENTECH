@@ -300,7 +300,7 @@ class _PreSalesListScreenState extends State<PreSalesListScreen> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(query.productQueryDescription, maxLines: 2, overflow: TextOverflow.ellipsis, 
+                    Text(query.productQueryDescription ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, 
                          style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
                     const SizedBox(height: 8),
                     Row(

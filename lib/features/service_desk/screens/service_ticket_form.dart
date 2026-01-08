@@ -33,6 +33,7 @@ class _ServiceTicketFormState extends State<ServiceTicketForm> {
     
     if (snap.docs.isNotEmpty) {
       final p = ProductModel.fromSnapshot(snap.docs.first);
+      if (!mounted) return;
       setState(() {
         _selectedProduct = p;
         _isProductFound = true;
@@ -40,7 +41,10 @@ class _ServiceTicketFormState extends State<ServiceTicketForm> {
         _phoneCtrl.text = p.phoneNumber;
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Product not found! Register it first.")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Product not found! Register it first.")));
+      }
+      if (!mounted) return;
       setState(() {
         _selectedProduct = null;
         _isProductFound = false;
@@ -80,7 +84,9 @@ class _ServiceTicketFormState extends State<ServiceTicketForm> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Ticket Created Successfully")));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

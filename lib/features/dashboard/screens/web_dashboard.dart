@@ -10,6 +10,7 @@ import '../screens/reminder_list_screen.dart';
 import '../../pre_sales/screens/pre_sales_list_screen.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/analytics_card.dart';
+import '../../settings/screens/support_screen.dart';
 
 class WebDashboard extends StatelessWidget {
   final int selectedIndex;
@@ -85,6 +86,11 @@ class WebDashboard extends StatelessWidget {
                   selectedIcon: Icon(Icons.people),
                   label: Text('Admin'),
                ),
+               NavigationRailDestination(
+                  icon: Icon(Icons.headset_mic_outlined),
+                  selectedIcon: Icon(Icons.headset_mic),
+                  label: Text('Support'),
+               ),
             ],
           ),
           const VerticalDivider(thickness: 1, width: 1),
@@ -106,6 +112,7 @@ class WebDashboard extends StatelessWidget {
     if (selectedIndex == 5) return const ServiceTicketListScreen();
     if (selectedIndex == 6) return const SparePartsScreen();
     if (selectedIndex == 7) return const AdminUserManagementScreen();
+    if (selectedIndex == 8) return const SupportScreen();
     return const SizedBox();
   }
 
