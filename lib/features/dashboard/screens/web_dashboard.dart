@@ -5,7 +5,8 @@ import '../../auth/screens/admin_user_management_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../service_desk/screens/spare_parts_screen.dart';
-// import '../screens/reminder_list_screen.dart';
+import '../../amc/screens/amc_list_screen.dart';
+import '../screens/reminder_list_screen.dart';
 import '../../pre_sales/screens/pre_sales_list_screen.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/analytics_card.dart';
@@ -60,6 +61,16 @@ class WebDashboard extends StatelessWidget {
                 label: Text('Products'),
               ),
               NavigationRailDestination(
+                icon: Icon(Icons.handshake_outlined),
+                selectedIcon: Icon(Icons.handshake),
+                label: Text('AMC'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.notifications_active_outlined),
+                selectedIcon: Icon(Icons.notifications_active),
+                label: Text('Reminders'),
+              ),
+              NavigationRailDestination(
                 icon: Icon(Icons.support_agent_outlined),
                 selectedIcon: Icon(Icons.support_agent),
                 label: Text('Service Desk'),
@@ -90,9 +101,11 @@ class WebDashboard extends StatelessWidget {
     if (selectedIndex == 0) return _buildOverview(context);
     if (selectedIndex == 1) return const PreSalesListScreen();
     if (selectedIndex == 2) return const ProductListScreen();
-    if (selectedIndex == 3) return const ServiceTicketListScreen();
-    if (selectedIndex == 4) return const SparePartsScreen();
-    if (selectedIndex == 5) return const AdminUserManagementScreen();
+    if (selectedIndex == 3) return const AmcListScreen();
+    if (selectedIndex == 4) return const ReminderListScreen();
+    if (selectedIndex == 5) return const ServiceTicketListScreen();
+    if (selectedIndex == 6) return const SparePartsScreen();
+    if (selectedIndex == 7) return const AdminUserManagementScreen();
     return const SizedBox();
   }
 
@@ -102,7 +115,26 @@ class WebDashboard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Dashboard Overview", style: Theme.of(context).textTheme.headlineMedium),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Dashboard Overview", style: Theme.of(context).textTheme.headlineMedium),
+              FutureBuilder<Map<String, int>>(
+                future: _fetchDashboardStats(), 
+                builder: (context, snapshot) {
+                  final count = (snapshot.data?['sla_today'] ?? 0) + (snapshot.data?['sla_breaches'] ?? 0);
+                  return IconButton(
+                    onPressed: () => onNavTap(4), // Go to Reminders
+                    icon: Badge(
+                      label: Text(count.toString()),
+                      isLabelVisible: count > 0,
+                      child: const Icon(Icons.notifications, size: 32),
+                    ),
+                  );
+                }
+              ),
+            ],
+          ),
           const SizedBox(height: 24),
           Expanded(
             child: FutureBuilder<Map<String, int>>(
@@ -164,7 +196,7 @@ class WebDashboard extends StatelessWidget {
                       value: data['open_tickets'].toString(),
                       icon: Icons.support_agent,
                       color: Colors.blueAccent,
-                      onTap: () => onNavTap(3), // Service Desk
+                      onTap: () => onNavTap(5), // Service Desk (Index 5)
                     ),
                     AnalyticsCard(
                       title: 'SLA Breaches',
