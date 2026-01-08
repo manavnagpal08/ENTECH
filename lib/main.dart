@@ -7,10 +7,6 @@ import 'features/auth/repositories/auth_repository.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'core/services/reminder_service.dart';
 
-import 'features/dashboard/screens/dashboard_screen.dart'; 
-
-import 'package:firebase_auth/firebase_auth.dart'; // Added for User type
-
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const AppInitializer());
