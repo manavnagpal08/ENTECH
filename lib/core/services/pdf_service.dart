@@ -10,14 +10,14 @@ import '../../data/models/product_model.dart';
 class PdfService {
   Future<pw.ImageProvider?> _loadLogo() async {
     try {
-      // Try local asset first
+      // 1. Try Local Asset (Best for Web)
       return await imageFromAssetBundle('assets/images/logo.png');
     } catch (e) {
       try {
-        // Fallback to network if local fails
+        // 2. Try Network URL (Fallback)
         return await networkImage('https://envirotechindia.com/wp-content/uploads/2020/03/Envirotech-Logo_new-1.png');
       } catch (e2) {
-        // Return null if both fail - will show text instead
+        // 3. Fail gracefully (Return null so text is displayed)
         return null;
       }
     }
