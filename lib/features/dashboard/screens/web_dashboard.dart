@@ -13,12 +13,14 @@ import '../../settings/screens/support_screen.dart';
 
 class WebDashboard extends StatelessWidget {
   final int selectedIndex;
-  final Function(int) onNavTap;
+  final String? selectedFilter;
+  final Function(int, {String? filter}) onNavTap;
   final VoidCallback onLogout;
 
   const WebDashboard({
     super.key,
     required this.selectedIndex,
+    this.selectedFilter,
     required this.onNavTap,
     required this.onLogout,
   });
@@ -32,7 +34,7 @@ class WebDashboard extends StatelessWidget {
           // Sidebar
           NavigationRail(
             selectedIndex: selectedIndex,
-            onDestinationSelected: onNavTap,
+            onDestinationSelected: (i) => onNavTap(i), // Clear filter on generic nav
             labelType: NavigationRailLabelType.all,
             backgroundColor: Colors.white,
             elevation: 5,
@@ -70,11 +72,11 @@ class WebDashboard extends StatelessWidget {
 
   Widget _buildBody(BuildContext context) {
     if (selectedIndex == 0) return _buildOverview(context);
-    if (selectedIndex == 1) return const PreSalesListScreen();
+    if (selectedIndex == 1) return PreSalesListScreen(initialStatus: selectedFilter);
     if (selectedIndex == 2) return const ProductListScreen();
     if (selectedIndex == 3) return const AmcListScreen();
     if (selectedIndex == 4) return const ReminderListScreen();
-    if (selectedIndex == 5) return const ServiceTicketListScreen();
+    if (selectedIndex == 5) return ServiceTicketListScreen(initialFilter: selectedFilter);
     if (selectedIndex == 6) return const SparePartsScreen();
     if (selectedIndex == 7) return const AdminUserManagementScreen();
     if (selectedIndex == 8) return const SupportScreen();
@@ -120,13 +122,13 @@ class WebDashboard extends StatelessWidget {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  _buildPremiumCard('Enquiries', data['total'].toString(), Icons.contact_mail, Colors.blue, 0, context),
-                  _buildPremiumCard('Proposals Sent', data['sent'].toString(), Icons.send, Colors.orange, 0, context),
-                  _buildPremiumCard('Pending Approvals', data['approvals'].toString(), Icons.verified_user, Colors.purple, 1, context),
-                  _buildPremiumCard('SLA Due Today', data['sla_today'].toString(), Icons.timer_outlined, Colors.redAccent, 4, context),
-                  _buildPremiumCard('Active Warranty', data['active_warranty'].toString(), Icons.verified, Colors.green, 2, context),
-                  _buildPremiumCard('Open Tickets', data['open_tickets'].toString(), Icons.support_agent, Colors.blueAccent, 5, context),
-                  _buildPremiumCard('SLA Breaches', data['sla_breaches'].toString(), Icons.warning_amber_rounded, Colors.red, 5, context),
+                  _buildPremiumCard('Enquiries', data['total'].toString(), Icons.contact_mail, Colors.blue, 1, context), // PreSales
+                  _buildPremiumCard('Proposals Sent', data['sent'].toString(), Icons.send, Colors.orange, 1, context, filter: 'proposal_sent'),
+                  _buildPremiumCard('Pending Approvals', data['approvals'].toString(), Icons.verified_user, Colors.purple, 1, context, filter: 'pending'), // Approvals usually pending status
+                  _buildPremiumCard('SLA Due Today', data['sla_today'].toString(), Icons.timer_outlined, Colors.redAccent, 4, context), // Reminders
+                  _buildPremiumCard('Active Warranty', data['active_warranty'].toString(), Icons.verified, Colors.green, 2, context), // Products
+                  _buildPremiumCard('Open Tickets', data['open_tickets'].toString(), Icons.support_agent, Colors.blueAccent, 5, context, filter: 'Open'),
+                  _buildPremiumCard('SLA Breaches', data['sla_breaches'].toString(), Icons.warning_amber_rounded, Colors.red, 5, context, filter: 'IsBreach'), 
                   _buildPremiumCard('Total Sold', data['total_products'].toString(), Icons.shopping_bag_outlined, Colors.teal, 2, context),
                 ],
               ),
@@ -158,13 +160,13 @@ class WebDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildPremiumCard(String title, String value, IconData icon, Color color, int navIndex, BuildContext context) {
+  Widget _buildPremiumCard(String title, String value, IconData icon, Color color, int navIndex, BuildContext context, {String? filter}) {
     return Card(
       elevation: 4,
       shadowColor: color.withOpacity(0.3),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        onTap: () => onNavTap(navIndex),
+        onTap: () => onNavTap(navIndex, filter: filter),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(

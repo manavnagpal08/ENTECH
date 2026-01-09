@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_constants.dart';
+import 'spare_part_history_screen.dart';
 // import '../../../core/theme/app_theme.dart';
 
 class SparePart {
@@ -37,8 +38,15 @@ class SparePart {
   }
 }
 
-class SparePartsScreen extends StatelessWidget {
+class SparePartsScreen extends StatefulWidget {
   const SparePartsScreen({super.key});
+
+  @override
+  State<SparePartsScreen> createState() => _SparePartsScreenState();
+}
+
+class _SparePartsScreenState extends State<SparePartsScreen> {
+  String _searchQuery = '';
 
   void _addEditPart(BuildContext context, {SparePart? part}) {
     final nameCtrl = TextEditingController(text: part?.partName);
@@ -97,7 +105,26 @@ class SparePartsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Spare Parts Inventory')),
+      appBar: AppBar(
+        title: const Text('Spare Parts Inventory'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Search Parts...',
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+              onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
+            ),
+          ),
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _addEditPart(context),
         child: const Icon(Icons.add),
@@ -109,75 +136,70 @@ class SparePartsScreen extends StatelessWidget {
           builder: (context, snapshot) {
             if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
             
+            final allDocs = snapshot.data!.docs;
+            final filteredDocs = allDocs.where((doc) {
+               final data = doc.data() as Map<String, dynamic>;
+               final name = (data['partName'] ?? '').toString().toLowerCase();
+               final num = (data['partNumber'] ?? '').toString().toLowerCase();
+               return name.contains(_searchQuery) || num.contains(_searchQuery);
+            }).toList();
+
+            if (filteredDocs.isEmpty) {
+               return const Center(child: Text("No parts found."));
+            }
+
             return GridView.builder(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, // 2 columns for better space usage, or use responsive layout if needed
-                childAspectRatio: 1.5,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
+                crossAxisCount: 3, // Denser grid (3 columns)
+                childAspectRatio: 1.0, // Square cards
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
               ),
-              itemCount: snapshot.data!.docs.length,
+              itemCount: filteredDocs.length,
               itemBuilder: (context, index) {
-                final part = SparePart.fromSnapshot(snapshot.data!.docs[index]);
+                final part = SparePart.fromSnapshot(filteredDocs[index]);
                 final isLowStock = part.stockQty <= part.lowStockThreshold;
 
-                return Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))],
+                return Card(
+                  elevation: 0,
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: Colors.grey.shade200),
                   ),
-                  child: Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  child: InkWell(
+                    onTap: () {
+                       // Navigate to History
+                       Navigator.push(context, MaterialPageRoute(builder: (_) => SparePartHistoryScreen(part: part)));
+                    },
+                    borderRadius: BorderRadius.circular(16),
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: isLowStock ? Colors.red.shade50 : Colors.blue.shade50,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(Icons.settings_input_component, color: isLowStock ? Colors.red : Colors.blue, size: 24),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.edit, size: 20),
-                                onPressed: () => _addEditPart(context, part: part),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(part.partName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
-                              Text('P/N: ${part.partNumber}', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                            ],
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('${part.stockQty} Units', style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                                color: isLowStock ? Colors.red : Colors.grey.shade800,
-                              )),
-                              if (isLowStock)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
-                                  child: const Text('LOW STOCK', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                                )
-                            ],
-                          ),
+                           Icon(Icons.settings_input_component, 
+                                color: isLowStock ? Colors.red : Colors.blue, 
+                                size: 32
+                           ),
+                           const SizedBox(height: 8),
+                           Text(
+                             part.partName, 
+                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                             textAlign: TextAlign.center,
+                             maxLines: 2,
+                             overflow: TextOverflow.ellipsis,
+                           ),
+                           const SizedBox(height: 4),
+                           Text(
+                             '${part.stockQty} Qty', 
+                             style: TextStyle(
+                               fontWeight: FontWeight.bold, 
+                               color: isLowStock ? Colors.red : Colors.green,
+                               fontSize: 12,
+                             ),
+                           ),
                         ],
                       ),
                     ),

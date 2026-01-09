@@ -8,7 +8,8 @@ import 'service_ticket_form.dart';
 import '../../../core/theme/app_theme.dart';
 
 class ServiceTicketListScreen extends StatefulWidget {
-  const ServiceTicketListScreen({super.key});
+  final String? initialFilter; // 'Open', 'Closed', etc.
+  const ServiceTicketListScreen({super.key, this.initialFilter});
 
   @override
   State<ServiceTicketListScreen> createState() => _ServiceTicketListScreenState();
@@ -20,7 +21,12 @@ class _ServiceTicketListScreenState extends State<ServiceTicketListScreen> with 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    int initialIndex = 0;
+    if (widget.initialFilter != null) {
+       if (widget.initialFilter!.toLowerCase().contains('progress')) initialIndex = 1;
+       else if (widget.initialFilter!.toLowerCase().contains('clos')) initialIndex = 2;
+    }
+    _tabController = TabController(length: 3, vsync: this, initialIndex: initialIndex);
   }
 
   @override

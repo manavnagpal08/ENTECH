@@ -44,15 +44,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       appBar: AppBar(
         title: Text(_product.productName.toUpperCase()),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf),
-            tooltip: 'Download Warranty Cert',
-            onPressed: () async {
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.print),
+            tooltip: 'Print Reports',
+            onSelected: (value) async {
               setState(() => _isLoading = true);
-              await PdfService().generateWarrantyCertificate(_product);
-              setState(() => _isLoading = false);
+              try {
+                if (value == 'cert') {
+                   await PdfService().generateWarrantyCertificate(_product);
+                } else if (value == 'history') {
+                   await PdfService().generateFullProductHistory(_product);
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("PDF Error: $e"), backgroundColor: Colors.red));
+              } finally {
+                if (mounted) setState(() => _isLoading = false);
+              }
             },
-          )
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'cert',
+                child: Row(children: [Icon(Icons.verified, color: Colors.green), SizedBox(width: 8), Text('Warranty Certificate')]),
+              ),
+              const PopupMenuItem<String>(
+                value: 'history',
+                child: Row(children: [Icon(Icons.history, color: Colors.blue), SizedBox(width: 8), Text('Full History Report')]),
+              ),
+            ],
+          ),
         ],
       ),
       body: _isLoading 

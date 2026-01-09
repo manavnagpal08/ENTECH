@@ -7,12 +7,39 @@ import '../../../data/models/product_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'add_edit_product_screen.dart';
 
-class ProductListScreen extends StatelessWidget {
+class ProductListScreen extends StatefulWidget {
   const ProductListScreen({super.key});
+
+  @override
+  State<ProductListScreen> createState() => _ProductListScreenState();
+}
+
+class _ProductListScreenState extends State<ProductListScreen> {
+  String _searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
      return Scaffold(
+      appBar: AppBar(
+        title: const Text('Products'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Search by Name, Serial, or Customer...',
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+              onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
+            ),
+          ),
+        ),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEditProductScreen()));
@@ -34,11 +61,24 @@ class ProductListScreen extends StatelessWidget {
           builder: (context, snapshot) {
             if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
             
+            final allDocs = snapshot.data!.docs;
+            final filteredDocs = allDocs.where((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              final name = (data['productName'] ?? '').toString().toLowerCase();
+              final serial = (data['serialNumber'] ?? '').toString().toLowerCase();
+              final customer = (data['customerName'] ?? '').toString().toLowerCase();
+              return name.contains(_searchQuery) || serial.contains(_searchQuery) || customer.contains(_searchQuery);
+            }).toList();
+
+            if (filteredDocs.isEmpty) {
+               return const Center(child: Text("No products found matching your search."));
+            }
+
             return ListView.builder(
               padding: const EdgeInsets.all(20),
-              itemCount: snapshot.data!.docs.length,
+              itemCount: filteredDocs.length,
               itemBuilder: (context, index) {
-                final product = ProductModel.fromSnapshot(snapshot.data!.docs[index]);
+                final product = ProductModel.fromSnapshot(filteredDocs[index]);
                 final isWarrantyValid = product.isWarrantyValid;
                 
                 return Container(

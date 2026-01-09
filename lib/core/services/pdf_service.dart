@@ -1,8 +1,8 @@
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart'; // For debugPrint
 import '../constants/app_constants.dart';
 import '../../data/models/service_ticket_model.dart';
 import '../../data/models/product_model.dart';
@@ -10,24 +10,32 @@ import '../../data/models/product_model.dart';
 class PdfService {
   Future<pw.ImageProvider?> _loadLogo() async {
     try {
-      // 1. Try Local Asset (Best for Web)
-      return await imageFromAssetBundle('assets/images/logo.png');
+      // 1. Try Dynamic Logo from Firestore (Admin Settings)
+       try {
+         final doc = await FirebaseFirestore.instance.collection('settings').doc('global').get();
+         if (doc.exists && doc.data() != null && doc.data()!['logoUrl'] != null) {
+            // Short timeout to fail fast if URL is bad
+            return await networkImage(doc.data()!['logoUrl']).timeout(const Duration(seconds: 4));
+         }
+       } catch (e) {
+         debugPrint('PDF Logo: Firestore fetch failed: $e');
+       }
+
+      // 2. Fallback: Return NULL to trigger Text Display.
+      // We strictly do NOT load local assets or other network images to prevent hanging.
+      return null;
     } catch (e) {
-      try {
-        // 2. Try Network URL (Fallback)
-        return await networkImage('https://envirotechindia.com/wp-content/uploads/2020/03/Envirotech-Logo_new-1.png');
-      } catch (e2) {
-        // 3. Fail gracefully (Return null so text is displayed)
-        return null;
-      }
+      debugPrint('PDF Logo: Critical error: $e');
+      return null;
     }
   }
 
   Future<void> generateServiceTicketReport(ServiceTicket ticket, ProductModel product) async {
     final pdf = pw.Document();
     final logoImage = await _loadLogo();
-    final font = await PdfGoogleFonts.interRegular();
-    final fontBold = await PdfGoogleFonts.interBold();
+    // Use Standard Fonts (Helvetica) for instant performance -> No Network Fetch
+    final font = pw.Font.helvetica(); 
+    final fontBold = pw.Font.helveticaBold();
 
     pdf.addPage(
       pw.MultiPage(
@@ -123,8 +131,9 @@ class PdfService {
   Future<void> generateWarrantyCertificate(ProductModel product) async {
     final pdf = pw.Document();
     final logoImage = await _loadLogo();
-    final font = await PdfGoogleFonts.interRegular();
-    final fontBold = await PdfGoogleFonts.interBold();
+    // Use Standard Fonts (Helvetica) for instant performance -> No Network Fetch
+    final font = pw.Font.helvetica();
+    final fontBold = pw.Font.helveticaBold();
 
     pdf.addPage(
       pw.Page(
@@ -143,7 +152,7 @@ class PdfService {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text('Certificate No: ${product.id.substring(0, 8).toUpperCase()}'),
+                  pw.Text('Certificate No: ${product.id.length >= 8 ? product.id.substring(0, 8).toUpperCase() : product.id.toUpperCase()}'),
                   pw.SizedBox(height: 10),
                   pw.Text('This certifies that the product below is covered under Envirotech Warranty.'),
                   pw.SizedBox(height: 20),
@@ -257,6 +266,95 @@ class PdfService {
         isWarranty ? 'IN WARRANTY' : 'OUT OF WARRANTY',
         style: pw.TextStyle(color: color, fontWeight: pw.FontWeight.bold, fontSize: 10),
       ),
+    );
+  }
+
+  Future<void> generateFullProductHistory(ProductModel product) async {
+    final pdf = pw.Document();
+    final logoImage = await _loadLogo();
+    final font = pw.Font.helvetica();
+    final fontBold = pw.Font.helveticaBold();
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        theme: pw.ThemeData.withFont(base: font, bold: fontBold),
+        build: (context) => [
+          _buildHeader(logoImage),
+          pw.SizedBox(height: 20),
+          pw.Center(
+            child: pw.Text('PRODUCT LIFECYCLE REPORT', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey800)),
+          ),
+          pw.SizedBox(height: 20),
+
+          // Product Overview
+          pw.Container(
+            padding: const pw.EdgeInsets.all(10),
+            decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300), borderRadius: pw.BorderRadius.circular(5)),
+            child: pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Expanded(
+                  child: _buildSection('Product Details', [
+                    'Name: ${product.productName}',
+                    'Model: ${product.modelOrVariant}',
+                    'S/N: ${product.serialNumber}',
+                    'Warranty: ${product.isWarrantyValid ? "ACTIVE" : "EXPIRED"}',
+                  ]),
+                ),
+                pw.Expanded(
+                  child: _buildSection('Customer Details', [
+                    'Name: ${product.customerName}',
+                    'Phone: ${product.phoneNumber}',
+                    'Email: ${product.email}',
+                    'Loc: ${product.location['city'] ?? '-'}',
+                  ]),
+                ),
+              ],
+            ),
+          ),
+          
+          pw.SizedBox(height: 20),
+          pw.Text('Service Timeline', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 10),
+
+          if (product.serviceHistory.isEmpty)
+             pw.Center(child: pw.Text("No service history recorded for this product.", style: const pw.TextStyle(color: PdfColors.grey)))
+          else
+            pw.TableHelper.fromTextArray(
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+              headerHeight: 30,
+              cellHeight: 40,
+              cellAlignments: {
+                0: pw.Alignment.centerLeft,
+                1: pw.Alignment.centerLeft,
+                2: pw.Alignment.centerLeft,
+                3: pw.Alignment.centerLeft,
+              },
+              columnWidths: {
+                0: const pw.FixedColumnWidth(80), // Date
+                1: const pw.FixedColumnWidth(80), // Ticket
+                2: const pw.FlexColumnWidth(2),   // Issue/Notes
+                3: const pw.FlexColumnWidth(1),   // Parts
+              },
+              headers: ['Date', 'Ticket ID', 'Issue & Resolution', 'Parts'],
+              data: product.serviceHistory.map((h) => [
+                h.resolvedOn.toString().split(' ')[0],
+                h.ticketId.length > 5 ? '#${h.ticketId.substring(0, 5)}' : '#${h.ticketId}',
+                'Issue: ${h.issueDescription}\nNote: ${h.notesSummary}',
+                h.partsReplacedSummary.isEmpty ? '-' : h.partsReplacedSummary,
+              ]).toList(),
+            ),
+
+           pw.Spacer(),
+           _buildFooter(),
+        ],
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (format) async => pdf.save(),
+      name: 'History_${product.serialNumber}',
     );
   }
 }

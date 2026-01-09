@@ -11,7 +11,8 @@ import 'pre_sales_form_screen.dart';
 import 'pre_sales_detail_screen.dart';
 
 class PreSalesListScreen extends StatefulWidget {
-  const PreSalesListScreen({super.key});
+  final String? initialStatus;
+  const PreSalesListScreen({super.key, this.initialStatus});
 
   @override
   State<PreSalesListScreen> createState() => _PreSalesListScreenState();
@@ -22,7 +23,13 @@ class _PreSalesListScreenState extends State<PreSalesListScreen> {
   final ExcelService _excelService = ExcelService();
   String _selectedMonth = DateFormat('MMMM yyyy').format(DateTime.now());
   String _searchQuery = '';
-  String _statusFilter = 'All'; // All, New, Sent, Accepted, Rejected
+  late String _statusFilter;
+
+  @override
+  void initState() {
+    super.initState();
+    _statusFilter = widget.initialStatus ?? 'All';
+  }
   
   void _importExcel() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
